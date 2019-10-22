@@ -8,3 +8,9 @@ output=$((make -C . all) 2>&1)
 echo "$output"
 
 echo "$output" | perl -e '$x = ""; while (<>) { $x .= $_ }; my @arr = (); while ($x =~ /^([^\n]*?) error:((.|\n)*?)note: (.*?)\n/mg) { push @arr, "$1 warning: $4" }; foreach (@arr) { print "$_\n" }'
+
+if [[ $output == *"error"* ]]; then
+  exit 1
+fi
+
+exit 0

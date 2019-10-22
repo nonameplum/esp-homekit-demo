@@ -69,7 +69,7 @@
 			buildConfigurationList = 35975454235648E700123B9F /* Build configuration list for PBXLegacyTarget "garage" */;
 			buildPhases = (
 			);
-			buildToolPath = "/Volumes/esp8266/esp-homekit-demo/examples/garage/xcode_make.sh";
+			buildToolPath = "${SRCROOT}/../xcode_make.sh";
 			buildWorkingDirectory = "/Volumes/esp8266/esp-homekit-demo/examples/garage";
 			dependencies = (
 			);
