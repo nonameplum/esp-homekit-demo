@@ -11,28 +11,47 @@ EXTRA_COMPONENTS = \
 	$(abspath ../../components/esp-8266/wifi_config) \
 	$(abspath ../../../UDPlogger) \
 
-# ESPPORT=/dev/tty.SLAB_USBtoUART
+#ESPPORT=/dev/tty.SLAB_USBtoUART
 ESPPORT=/dev/cu.usbserial-AH0707RK
 ESPBAUD=460800
-FLASH_SIZE ?= 8
-FLASH_MODE ?= dout
-FLASH_SPEED ?= 40
-HOMEKIT_SPI_FLASH_BASE_ADDR ?= 0x7A000
 
-FLASH_SIZE ?= 32
 REED_PIN ?= 4
-RELAY_PIN ?= 12
 LAMP_PIN ?= 5
+RELAY_PIN ?= 12
 LED_PIN ?= 13
 BUTTON_PIN ?= 0
+
+SONOFF=0
+message=""
+ifeq ($(SONOFF),1)
+	FLASH_SIZE ?= 8
+	FLASH_MODE ?= dout
+	FLASH_SPEED ?= 40
+	HOMEKIT_SPI_FLASH_BASE_ADDR ?= 0x7A000
+	message = $(shell echo "sonoff setup")
+else
+	FLASH_SIZE ?= 32
+	FLASH_MODE ?= dio
+	FLASH_SPEED ?= 40
+	
+	REED_PIN ?= -4
+	LAMP_PIN ?= 4
+	RELAY_PIN ?= -3
+	LED_PIN ?= 2
+	BUTTON_PIN ?= -1
+	message = $(shell echo "genric 4MB esp8266 setup")
+endif
+$(info $(message))
 
 EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS -DREED_PIN=$(REED_PIN) -DLAMP_PIN=$(LAMP_PIN) -DRELAY_PIN=$(RELAY_PIN) -DLED_PIN=$(LED_PIN) -DBUTTON_PIN=$(BUTTON_PIN) 
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_TO_UDP
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_ALSO_SERIAL
 EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
+#EXTRA_CFLAGS += -DGARAGE_DEBUG
+#EXTRA_CFLAGS += -DHOMEKIT_DEBUG
+EXTRA_CFLAGS += -DLWIP_RAW=1
 
 include $(SDK_PATH)/common.mk
-# include /Volumes/esp8266/esp-open-rtos/common.mk
 
 monitor:
 	$(FILTEROUTPUT) --port $(ESPPORT) --baud 115200 --elf $(PROGRAM_OUT)

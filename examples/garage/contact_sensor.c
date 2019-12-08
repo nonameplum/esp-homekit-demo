@@ -51,7 +51,7 @@ int contact_sensor_create(const uint8_t gpio_num, contact_sensor_callback_fn cal
     sensors = sensor;
 
     gpio_enable(sensor->gpio_num, GPIO_INPUT);
-    gpio_set_pullup(sensor->gpio_num, true, true);
+    gpio_set_pullup(sensor->gpio_num, false, false);
     gpio_set_interrupt(sensor->gpio_num, GPIO_INTTYPE_EDGE_ANY, contact_sensor_intr_callback);
 
     return 0;

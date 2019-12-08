@@ -20,13 +20,13 @@ static void wifi_init() {
     sdk_wifi_set_opmode(STATION_MODE);
     sdk_wifi_station_set_config(&wifi_config);
     sdk_wifi_station_connect();
-    printf("wifi=%d\r\n", sdk_wifi_station_get_connect_status());
 }
 
-const int led_gpio = 13;
-bool led_on = true;
+const int led_gpio = 4;
+bool led_on = false;
 
 void led_write(bool on) {
+    printf("gpio #%d set: %s", led_gpio, led_on ? "on" : "off");
     gpio_write(led_gpio, on ? 0 : 1);
 }
 
@@ -35,7 +35,8 @@ void led_init() {
     led_write(led_on);
 }
 
-void led_identify_task(void *_args) {
+void led_i
+dentify_task(void *_args) {
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
             led_write(true);
@@ -104,6 +105,8 @@ homekit_server_config_t config = {
 
 void user_init(void) {
     uart_set_baud(0, 115200);
+
+    printf("led example");
 
     wifi_init();
     led_init();

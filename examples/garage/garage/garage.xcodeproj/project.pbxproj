@@ -7,9 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		355EEE58239BD2BF00E01C72 /* esp_ping.c in Sources */ = {isa = PBXBuildFile; fileRef = 355EEE57239BD2BF00E01C72 /* esp_ping.c */; };
 		3571A2B123564F50009398B2 /* contact_sensor.c in Sources */ = {isa = PBXBuildFile; fileRef = 3571A2AC23564F50009398B2 /* contact_sensor.c */; };
 		3571A2B223564F50009398B2 /* button_sensor.c in Sources */ = {isa = PBXBuildFile; fileRef = 3571A2AF23564F50009398B2 /* button_sensor.c */; };
 		3571A2B323564F50009398B2 /* garage.c in Sources */ = {isa = PBXBuildFile; fileRef = 3571A2B023564F50009398B2 /* garage.c */; };
+		35B1F8B6238D256C00DCB528 /* garage_debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 35B1F8B5238D256900DCB528 /* garage_debug.c */; };
+		35B1F8B9238FDAE500DCB528 /* wifi_scan.c in Sources */ = {isa = PBXBuildFile; fileRef = 35B1F8B8238FDAE500DCB528 /* wifi_scan.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -26,6 +29,8 @@
 
 /* Begin PBXFileReference section */
 		351AFFD2235E312A003781D3 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = ../Makefile; sourceTree = "<group>"; };
+		355EEE56239BD2BF00E01C72 /* esp_ping.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = esp_ping.h; path = ../esp_ping.h; sourceTree = "<group>"; };
+		355EEE57239BD2BF00E01C72 /* esp_ping.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = esp_ping.c; path = ../esp_ping.c; sourceTree = "<group>"; };
 		3571A2AC23564F50009398B2 /* contact_sensor.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = contact_sensor.c; path = ../contact_sensor.c; sourceTree = "<group>"; };
 		3571A2AD23564F50009398B2 /* contact_sensor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = contact_sensor.h; path = ../contact_sensor.h; sourceTree = "<group>"; };
 		3571A2AE23564F50009398B2 /* button_sensor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = button_sensor.h; path = ../button_sensor.h; sourceTree = "<group>"; };
@@ -33,6 +38,10 @@
 		3571A2B023564F50009398B2 /* garage.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = garage.c; path = ../garage.c; sourceTree = "<group>"; };
 		3571A2B4235652F9009398B2 /* xcode */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = xcode; sourceTree = BUILT_PRODUCTS_DIR; };
 		3571A2B5235655D5009398B2 /* xcode_make.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = xcode_make.sh; path = ../xcode_make.sh; sourceTree = "<group>"; };
+		35B1F8B4238D256900DCB528 /* garage_debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = garage_debug.h; path = ../garage_debug.h; sourceTree = "<group>"; };
+		35B1F8B5238D256900DCB528 /* garage_debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = garage_debug.c; path = ../garage_debug.c; sourceTree = "<group>"; };
+		35B1F8B7238FDAE500DCB528 /* wifi_scan.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = wifi_scan.h; path = ../wifi_scan.h; sourceTree = "<group>"; };
+		35B1F8B8238FDAE500DCB528 /* wifi_scan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = wifi_scan.c; path = ../wifi_scan.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,14 +58,20 @@
 		3597544C235648E700123B9F = {
 			isa = PBXGroup;
 			children = (
+				355EEE56239BD2BF00E01C72 /* esp_ping.h */,
+				355EEE57239BD2BF00E01C72 /* esp_ping.c */,
 				3571A2AF23564F50009398B2 /* button_sensor.c */,
 				3571A2AE23564F50009398B2 /* button_sensor.h */,
 				3571A2AC23564F50009398B2 /* contact_sensor.c */,
 				3571A2AD23564F50009398B2 /* contact_sensor.h */,
+				35B1F8B5238D256900DCB528 /* garage_debug.c */,
+				35B1F8B4238D256900DCB528 /* garage_debug.h */,
 				3571A2B023564F50009398B2 /* garage.c */,
-				3571A2B5235655D5009398B2 /* xcode_make.sh */,
-				3571A2B4235652F9009398B2 /* xcode */,
 				351AFFD2235E312A003781D3 /* Makefile */,
+				35B1F8B8238FDAE500DCB528 /* wifi_scan.c */,
+				35B1F8B7238FDAE500DCB528 /* wifi_scan.h */,
+				3571A2B4235652F9009398B2 /* xcode */,
+				3571A2B5235655D5009398B2 /* xcode_make.sh */,
 			);
 			sourceTree = "<group>";
 		};
@@ -65,7 +80,7 @@
 /* Begin PBXLegacyTarget section */
 		35975451235648E700123B9F /* garage */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = "";
+			buildArgumentsString = "$(ACTION) $(CONFIGURATION_BUILD_DIR)";
 			buildConfigurationList = 35975454235648E700123B9F /* Build configuration list for PBXLegacyTarget "garage" */;
 			buildPhases = (
 			);
@@ -138,8 +153,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				35B1F8B9238FDAE500DCB528 /* wifi_scan.c in Sources */,
+				35B1F8B6238D256C00DCB528 /* garage_debug.c in Sources */,
 				3571A2B123564F50009398B2 /* contact_sensor.c in Sources */,
 				3571A2B323564F50009398B2 /* garage.c in Sources */,
+				355EEE58239BD2BF00E01C72 /* esp_ping.c in Sources */,
 				3571A2B223564F50009398B2 /* button_sensor.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
