@@ -4,6 +4,7 @@ EXTRA_COMPONENTS = \
 	extras/http-parser \
 	extras/dhcpserver \
 	extras/sntp \
+	lwip \
 	$(abspath ../../components/esp-8266/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \

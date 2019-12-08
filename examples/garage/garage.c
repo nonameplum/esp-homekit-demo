@@ -20,7 +20,10 @@
 #include "wifi.h"
 #include "garage_debug.h"
 #include "wifi_scan.h"
-#include "esp_ping.h"
+
+#include "lwip/etharp.h"
+#include "netif/ethernet.h"
+#include "ping.h"
 
 #define SNTP_SERVERS 	"0.pool.ntp.org", "1.pool.ntp.org", \
 						"2.pool.ntp.org", "3.pool.ntp.org"
@@ -488,50 +491,43 @@ void user_init(void) {
     wifi_init();
 }
 
-void log_ping(struct ping_resp *pingresp) {
-    LOG("# Ping:");
-    LOG("-- total_count: %d", pingresp->total_count);
-    LOG("-- resp_time: %d", pingresp->resp_time);
-    LOG("-- seqno: %d", pingresp->seqno);
-    LOG("-- timeout_count: %d", pingresp->timeout_count);
-    LOG("-- total_bytes: %d", pingresp->bytes);
-    LOG("-- total_bytes: %d", pingresp->total_bytes);
-    LOG("-- total_time: %d", pingresp->total_time);
-    LOG("-- total_time: %d", pingresp->ping_err);
-    LOG("#// Ping END");
+static err_t testif_tx_func(struct netif *netif, struct pbuf *p) {
+  LWIP_UNUSED_ARG(netif);
+  LWIP_UNUSED_ARG(p);
+  return ERR_OK;
 }
 
-void ping_recv_callback(void *arg, void *pdata) {
-    struct ping_resp *pingresp = (struct ping_resp *)pdata;
-    if (pingresp->ping_err == 0) {
-        log_ping(pingresp);
-    } else if (pingresp->ping_err == -1) {
-        LOG("Ping timeout");
-    } else {
-        LOG("Ping unkown error");
-    }
-}
+static err_t testif_init(struct netif *netif) {
+  netif->name[0] = 'c';
+  netif->name[1] = 'h';
+  netif->output = etharp_output;
+  netif->linkoutput = testif_tx_func;
+  netif->mtu = 1500;
+  netif->hwaddr_len = 6;
+  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
 
-void ping_sent_callback(void *arg, void *pdata) {
-    struct ping_resp *pingresp = (struct ping_resp *)pdata;
-    log_ping(pingresp);
+  netif->hwaddr[0] = 0x02;
+  netif->hwaddr[1] = 0x03;
+  netif->hwaddr[2] = 0x04;
+  netif->hwaddr[3] = 0x05;
+  netif->hwaddr[4] = 0x06;
+  netif->hwaddr[5] = 0x07;
+
+  return ERR_OK;
 }
 
 void start_ping() {
-    struct sockaddr_in sa;
-    inet_pton(AF_INET, "192.168.20.1", &(sa.sin_addr));
+    struct netif net_test;
     
-    struct ping_option pingopt = {
-        .ip = sa.sin_addr.s_addr,
-        .recv_function = ping_recv_callback,
-        .sent_function = ping_sent_callback,
-    };
+    ip4_addr_t addr;
+    ip4_addr_t netmask;
+    ip4_addr_t gw;
     
-    bool started = ping_start(&pingopt);
+    IP4_ADDR(&addr, 192, 168, 20, 101);
+    IP4_ADDR(&netmask, 255, 255, 255, 0);
+    IP4_ADDR(&gw, 192, 168, 20, 1);
     
-    if (started) {
-        LOG("Ping started");
-    } else {
-        LOG("Ping failed");
-    }
+    netif_add(&net_test, &addr, &netmask, &gw, &net_test, testif_init, ethernet_input);
+    
+    ping_init(&net_test.gw);
 }
