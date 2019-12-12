@@ -1,10 +1,10 @@
 PROGRAM = garage
 
 EXTRA_COMPONENTS = \
+	lwip \
 	extras/http-parser \
 	extras/dhcpserver \
 	extras/sntp \
-	lwip \
 	$(abspath ../../components/esp-8266/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
@@ -22,7 +22,7 @@ RELAY_PIN ?= 12
 LED_PIN ?= 13
 BUTTON_PIN ?= 0
 
-SONOFF=0
+SONOFF=1
 message=""
 ifeq ($(SONOFF),1)
 	FLASH_SIZE ?= 8
@@ -48,11 +48,10 @@ EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS -DREED_PIN=$(REED_PIN) -DLAM
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_TO_UDP
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_ALSO_SERIAL
 EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
-#EXTRA_CFLAGS += -DGARAGE_DEBUG
+EXTRA_CFLAGS += -DGARAGE_DEBUG
 #EXTRA_CFLAGS += -DHOMEKIT_DEBUG
-EXTRA_CFLAGS += -DLWIP_RAW=1
 
 include $(SDK_PATH)/common.mk
 
 monitor:
-	$(FILTEROUTPUT) --port $(ESPPORT) --baud 115200 --elf $(PROGRAM_OUT)
+	$(FILTEROUTPUT) --port $(ESPPORT) --baud ESPBAUD --elf $(PROGRAM_OUT)

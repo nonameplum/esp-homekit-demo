@@ -23,7 +23,7 @@
 
 #include "lwip/etharp.h"
 #include "netif/ethernet.h"
-#include "ping.h"
+#include "ping_helper.h"
 
 #define SNTP_SERVERS 	"0.pool.ntp.org", "1.pool.ntp.org", \
 						"2.pool.ntp.org", "3.pool.ntp.org"
@@ -43,6 +43,10 @@
 #define OPEN_CLOSE_DURATION 19
 #define LAMP_ON_DURATION 120
 #define RELAY_MS_DURATION 400
+
+#ifndef MAX_PING_FAILURE_COUNT
+#define MAX_PING_FAILURE_COUNT 20
+#endif
 
 const char *state_description(uint8_t state) {
     const char* description = "unknown";
@@ -433,12 +437,39 @@ void wifi_scan_callback(bool wifi_found, bool socked_connected) {
     LOG("WiFI ssid found: %s, socked connected: %s", boolToString(wifi_found), boolToString(socked_connected));
 }
 
+ip_addr_t get_gw_ip() {
+    struct ip_info info;
+    sdk_wifi_get_ip_info(STATION_IF, &info);
+    ip_addr_t gw_ip;
+    gw_ip.addr = info.gw.addr;
+    return gw_ip;
+}
+
+void wifi_watchdog_task(void *pvParameters) {
+    ip_addr_t to_ping = get_gw_ip();
+    LOG("Pinging gateway at IP %s", ipaddr_ntoa(&to_ping));
+    
+    ping_result_t res;
+    int ping_failure_count = 0;
+    
+    while (ping_failure_count <= MAX_PING_FAILURE_COUNT) {
+        ping_ip(to_ping, &res);
+        if (res.result_code == PING_RES_ECHO_REPLY) {
+            LOG("good ping from %s %u ms", ipaddr_ntoa(&res.response_ip), res.response_time_ms);
+        } else {
+            ping_failure_count += 1;
+            LOG("bad ping err %d # no. %d", res.result_code, ping_failure_count);
+        }
+        vTaskDelay(30000 / portTICK_PERIOD_MS);
+    }
+}
+
 void on_wifi_ready() {
     start_sntp();
     logVersion();
-    homekit_server_init(&config);
+//    homekit_server_init(&config);
     start_wifi_scan(WIFI_SSID, wifi_scan_callback);
-    start_ping();
+    xTaskCreate(wifi_watchdog_task, "wifi_watchdog_task", 2048, NULL, 2, NULL);
 }
 
 void wifi_task(void *_args) {
@@ -471,63 +502,25 @@ void user_init(void) {
     #endif /* GARAGE_DEBUG_UDP */
     
     uart_set_baud(0, 115200);
+    
+    gpio_enable(LED_PIN, GPIO_OUTPUT);
+    gpio_write(LED_PIN, true);
 
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
     logVersion();
 
-    gpio_init();
-    init_lamp_timer();
-    init_gdo_timer();
-
-    LOG("Using Sensor at GPIO%d.", REED_PIN);
-    if (contact_sensor_create(REED_PIN, contact_sensor_state_changed)) {
-        LOG("Failed to initialize door");
-    }
-    lastInterruptContactState = contact_sensor_state_get(REED_PIN);
-    
-    lamp_delayed_off_observer();
+//    gpio_init();
+//    init_lamp_timer();
+//    init_gdo_timer();
+//
+//    LOG("Using Sensor at GPIO%d.", REED_PIN);
+//    if (contact_sensor_create(REED_PIN, contact_sensor_state_changed)) {
+//        LOG("Failed to initialize door");
+//    }
+//    lastInterruptContactState = contact_sensor_state_get(REED_PIN);
+//
+//    lamp_delayed_off_observer();
     
     wifi_init();
-}
-
-static err_t testif_tx_func(struct netif *netif, struct pbuf *p) {
-  LWIP_UNUSED_ARG(netif);
-  LWIP_UNUSED_ARG(p);
-  return ERR_OK;
-}
-
-static err_t testif_init(struct netif *netif) {
-  netif->name[0] = 'c';
-  netif->name[1] = 'h';
-  netif->output = etharp_output;
-  netif->linkoutput = testif_tx_func;
-  netif->mtu = 1500;
-  netif->hwaddr_len = 6;
-  netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
-
-  netif->hwaddr[0] = 0x02;
-  netif->hwaddr[1] = 0x03;
-  netif->hwaddr[2] = 0x04;
-  netif->hwaddr[3] = 0x05;
-  netif->hwaddr[4] = 0x06;
-  netif->hwaddr[5] = 0x07;
-
-  return ERR_OK;
-}
-
-void start_ping() {
-    struct netif net_test;
-    
-    ip4_addr_t addr;
-    ip4_addr_t netmask;
-    ip4_addr_t gw;
-    
-    IP4_ADDR(&addr, 192, 168, 20, 101);
-    IP4_ADDR(&netmask, 255, 255, 255, 0);
-    IP4_ADDR(&gw, 192, 168, 20, 1);
-    
-    netif_add(&net_test, &addr, &netmask, &gw, &net_test, testif_init, ethernet_input);
-    
-    ping_init(&net_test.gw);
 }
