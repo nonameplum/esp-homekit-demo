@@ -1,13 +1,5 @@
-//
-//  garage_debug.h
-//  garage
-//
-//  Created by Łukasz Śliwiński on 26/11/2019.
-//  Copyright © 2019 plum. All rights reserved.
-//
-
-#ifndef garage_debug_h
-#define garage_debug_h
+#ifndef debug_helper_h
+#define debug_helper_h
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,9 +10,9 @@ char* getFormattedTime(void);
 char* boolToString(bool value);
 void silent_unused_args(const char *__restrict, ...);
 
-#ifdef GARAGE_DEBUG
+#ifdef DEBUG_HELPER
 
-    #ifdef GARAGE_DEBUG_UDP
+    #ifdef DEBUG_HELPER_UDP
 
         #define _LOG_(format, ...) \
         do { \
@@ -35,7 +27,7 @@ void silent_unused_args(const char *__restrict, ...);
             printf(format, ##__VA_ARGS__); \
         } while(0)
 
-    #endif /* GARAGE_DEBUG_UDP */
+    #endif /* DEBUG_HELPER_UDP */
 
     #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
@@ -50,6 +42,6 @@ void silent_unused_args(const char *__restrict, ...);
 
     #define LOG(message, ...) silent_unused_args(message, ##__VA_ARGS__)
 
-#endif /* GARAGE_DEBUG */
+#endif /* DEBUG_HELPER */
 
-#endif /* garage_debug_h */
+#endif /* debug_helper_h */

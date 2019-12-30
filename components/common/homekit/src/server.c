@@ -3155,7 +3155,9 @@ void homekit_server_process_notifications(homekit_server_t *server) {
         characteristic_event_t *event = NULL;
         if (xQueueReceive(context->event_queue, &event, 0)) {
             // Get and coalesce all client events
+            DEBUG("event = %p", event);
             client_event_t *events_head = malloc(sizeof(client_event_t));
+            DEBUG("events_head = %p", events_head);
             events_head->characteristic = event->characteristic;
             homekit_value_copy(&events_head->value, &event->value);
             events_head->next = NULL;
