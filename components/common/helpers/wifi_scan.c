@@ -19,7 +19,7 @@
 #include <lwip/err.h>
 #include <lwip/sockets.h>
 
-#include "garage_debug.h"
+#include "debug_helper.h"
 
 typedef struct _wifi_scan {
     char expected_ssid[33];
@@ -59,7 +59,7 @@ static void scan_done_cb(void *arg, sdk_scan_status_t status) {
         memcpy(ssid, bss->ssid, len);
         ssid[len] = 0;
 
-        LOG("%32s (" MACSTR ") RSSI: %02d, security: %s\n", ssid,
+        LOG("%s (" MACSTR ") RSSI: %02d, security: %s", ssid,
             MAC2STR(bss->bssid), bss->rssi, auth_modes[bss->authmode]);
         
         if (strcmp(ssid, wifi_scan_observer->expected_ssid) == 0) {

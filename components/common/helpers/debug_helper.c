@@ -6,7 +6,7 @@
 //  Copyright © 2019 plum. All rights reserved.
 //
 
-#include "garage_debug.h"
+#include "debug_helper.h"
 #include <time.h>
 
 char* getFormattedTime(void) {

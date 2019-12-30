@@ -1,11 +1,10 @@
-PROGRAM = garage
+PROGRAM = garage_light
 
 EXTRA_COMPONENTS = \
 	lwip \
 	extras/http-parser \
 	extras/dhcpserver \
 	extras/sntp \
-	extras/rboot-ota \
 	$(abspath ../../components/esp-8266/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
@@ -22,33 +21,21 @@ FLASH_SIZE ?= 32
 FLASH_MODE ?= dio
 FLASH_SPEED ?= 40
 
-# BUTTON_PIN ?= 0 // not used
-LED_PIN ?= 2 # XOR (LOW active)
-RELAY_PIN ?= 4 # Relay (short connect to open/close garage door)
-# INPUT_PIN ?= 5 # XOR (LOW active) // not used
-LAMP_PIN ?= 12 # Output outside lamp
-REED_PIN ?= 14 # Input Reed Switch
-
-BUILD_DATETIME ?= "Build time: $(shell date "+%d-%m-%y %H:%M:%S")"
-$(info $(BUILD_DATETIME))
+INPUT_PIN ?= 5
+RELAY_PIN ?= 4
+LED_PIN ?= 2
+SWITCH_PIN ?= 0
 
 EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS 
-EXTRA_CFLAGS += -DREED_PIN=$(REED_PIN)
-EXTRA_CFLAGS += -DLAMP_PIN=$(LAMP_PIN)
+EXTRA_CFLAGS += -DINPUT_PIN=$(INPUT_PIN) 
 EXTRA_CFLAGS += -DRELAY_PIN=$(RELAY_PIN)
 EXTRA_CFLAGS += -DLED_PIN=$(LED_PIN)
-# EXTRA_CFLAGS += -DBUTTON_PIN=$(BUTTON_PIN)
-# EXTRA_CFLAGS += -DINPUT_PIN=$(INPUT_PIN)
-
-EXTRA_CFLAGS += -DLWIP_NETIF_HOSTNAME=1
+EXTRA_CFLAGS += -DSWITCH_PIN=$(SWITCH_PIN)
+EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_TO_UDP
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_ALSO_SERIAL
-# EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
-# EXTRA_CFLAGS += -DDEBUG_HELPER
 # EXTRA_CFLAGS += -DHOMEKIT_DEBUG
-EXTRA_CFLAGS += -DHOMEKIT_LOGS_OFF=1
-
-EXTRA_CFLAGS += -DBUILD_DATETIME=\"$(BUILD_DATETIME)\"
+# EXTRA_CFLAGS += -DDEBUG_HELPER
 
 include $(SDK_PATH)/common.mk
 

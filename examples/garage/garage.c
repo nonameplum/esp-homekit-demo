@@ -11,22 +11,28 @@
 
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
-#include "contact_sensor.h"
-#include "button_sensor.h"
 #include <wifi_config.h>
 #include <udplogger.h>
 #include <sntp.h>
 #include <time.h>
-#include "wifi.h"
-#include "garage_debug.h"
-#include "wifi_scan.h"
 
+#include <lwip/api.h>
 #include "lwip/etharp.h"
 #include "netif/ethernet.h"
-#include "ping_helper.h"
+#include "sysparam.h"
+
+#include "ota-tftp.h"
+#include "rboot-api.h"
+
+#include "wifi.h"
+#include <wifi_scan.h>
+#include <debug_helper.h>
+#include <interrupt_gpio.h>
+#include <button_sensor.h>
+#include <ping_helper.h>
 
 #define SNTP_SERVERS 	"0.pool.ntp.org", "1.pool.ntp.org", \
-						"2.pool.ntp.org", "3.pool.ntp.org"
+						"2.pool.ntp.org", "3.pool.ntp.org"      
 
 // Possible values for characteristic CURRENT_DOOR_STATE:
 #define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN 0
@@ -45,51 +51,52 @@
 #define RELAY_MS_DURATION 400
 
 #ifndef MAX_PING_FAILURE_COUNT
-#define MAX_PING_FAILURE_COUNT 20
+#define MAX_PING_FAILURE_COUNT 30
 #endif
 
+bool contact_sensor_state_get(uint8_t gpio_num) {
+    return interrupt_gpio_state_get(gpio_num);
+}
+
 const char *state_description(uint8_t state) {
-    const char* description = "unknown";
     switch (state) {
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN: description = "open"; break;
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING: description = "opening"; break;
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED: description = "closed"; break;
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING: description = "closing"; break;
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_STOPPED: description = "stopped"; break;
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_UNKNOWN: description = "unknown"; break;
-        default: ;
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN: return "open";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING: return "opening";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED: return "closed";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING: return "closing";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_STOPPED: return "stopped";
+        default: return "unknown";
     }
-    return description;
 }
 
 void start_ping();
 
 //// GPIO setup
-static void gpio_init() {
-    LOG("");
-    gpio_enable(LED_PIN, GPIO_OUTPUT);
-    gpio_write(LED_PIN, false);
-
-    gpio_enable(RELAY_PIN, GPIO_OUTPUT);
-    gpio_write(RELAY_PIN, false);
-
-    gpio_enable(LAMP_PIN, GPIO_OUTPUT);
-    gpio_write(LAMP_PIN, false);
-}
-
 static void led_write(bool on) {
-    LOG("Led write: %d.", on ? 1 : 0);
-    gpio_write(LED_PIN, on ? 1 : 0);
+    LOG("Led write: %s. (org: %s)", boolToString(!on), boolToString(on));
+    gpio_write(LED_PIN, !on); // ESP8266MOD has LED configured active LOW
 }
 
 static void relay_write(bool on) {
-    LOG("Relay write: %d.", on ? 1 : 0);
-    gpio_write(RELAY_PIN, on ? 1 : 0);
+    LOG("Relay write: %s.", boolToString(on));
+    gpio_write(RELAY_PIN, on);
 }
 
 static void lamp_write(bool on) {
-    LOG("Lamp write: %d.", on ? 1 : 0);
-    gpio_write(LAMP_PIN, on ? 1 : 0);
+    LOG("Lamp write: %s.", boolToString(on));
+    gpio_write(LAMP_PIN, on);
+}
+
+static void gpio_init() {
+    LOG("Using LED at GPIO%d.", LED_PIN);
+    gpio_enable(LED_PIN, GPIO_OUTPUT);
+    led_write(false);
+    LOG("Using RELAY at GPIO%d.", RELAY_PIN);
+    gpio_enable(RELAY_PIN, GPIO_OUTPUT);
+    relay_write(false);
+    LOG("Using LAMP at GPIO%d.", LAMP_PIN);
+    gpio_enable(LAMP_PIN, GPIO_OUTPUT);
+    lamp_write(false);
 }
 
 //// Garage lamp ///////////////////////////////////////////////////////////
@@ -99,7 +106,7 @@ void lamp_state_set(bool on);
 
 // Getter
 homekit_value_t lamp_on_get() { 
-    LOG("return lamp on: %s", _lamp_on ? "true" : "false");
+    LOG("Return lamp on: %s", boolToString(_lamp_on));
     return HOMEKIT_BOOL(_lamp_on); 
 }
 // Setter
@@ -111,7 +118,7 @@ void lamp_on_set(homekit_value_t value) {
     }
     LOG("Disarm LAMP timer");
     sdk_os_timer_disarm(&lamp_timer);
-    LOG("LAPM on set: %d", value.bool_value);
+    LOG("LAPM on set: %s", boolToString(value.bool_value));
     lamp_state_set(value.bool_value);
 }
 // Characteristic
@@ -126,12 +133,12 @@ static void lamp_identify(homekit_value_t _value) {
 void lamp_state_notify_homekit() {
     LOG("");
     homekit_value_t new_value = lamp_on_get();
-    LOG("!> Notifying homekit LAMP state: '%s': [%s]", _lamp_on ? "ON" : "OFF", lamp_on.description);
+    LOG("!> Notifying homekit LAMP state: '%s': [%s]", boolToString(_lamp_on), lamp_on.description);
     homekit_characteristic_notify(&lamp_on, new_value);
 }
 
 void lamp_state_set(bool on) {
-    LOG("LAMP new value: %d, old value: %d", on, _lamp_on);
+    LOG("LAMP new value: %s, old value: %s", boolToString(on), boolToString(_lamp_on));
     if (_lamp_on != on) {
         _lamp_on = on;
         lamp_write(_lamp_on);
@@ -167,7 +174,7 @@ void lamp_delayed_off_observer_task(void *pvParameters) {
 
 void lamp_delayed_off_observer() {
     LOG("");
-    xTaskCreate(lamp_delayed_off_observer_task, "Lamp delayed off", 256, NULL, 1, NULL);
+    xTaskCreate(lamp_delayed_off_observer_task, "Lamp delayed off", 512, NULL, 1, NULL);
 }
 
 //// Garage door opener ///////////////////////////////////////////////////////////
@@ -224,11 +231,11 @@ void gdo_target_door_state_set(homekit_value_t new_value) {
     vTaskDelay(RELAY_MS_DURATION / portTICK_PERIOD_MS);
     relay_write(false);
 
-    if (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED) {
-        current_door_state_set(HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING);
-    } else {
-        current_door_state_set(HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING);
-    }
+    current_door_state_set(
+        (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED)
+        ? HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING
+        : HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING
+    );
     // Wait for the garage door to open / close,
     // then update current_door_state from sensor:
     LOG("Arm GDO timer");
@@ -239,16 +246,6 @@ homekit_characteristic_t target_door_state = HOMEKIT_CHARACTERISTIC_(
     TARGET_DOOR_STATE, HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED,
     .getter=gdo_target_door_state_get,
     .setter=gdo_target_door_state_set
-);
-// Obstruction //
-homekit_value_t gdo_obstruction_get() {
-    return HOMEKIT_BOOL(false);
-}
-// Characteristic
-homekit_characteristic_t gdo_obstruction = HOMEKIT_CHARACTERISTIC_(
-    OBSTRUCTION_DETECTED, HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED,
-    .getter=gdo_obstruction_get,
-    .setter=NULL
 );
 // Identify
 static void identify_gdo(homekit_value_t _value) {
@@ -268,7 +265,6 @@ void gdo_target_door_state_notify_homekit() {
     LOG("!> Notifying homekit TARGET DOOR state: '%s' [%s]", state_description(new_value.int_value), target_door_state.description);
     homekit_characteristic_notify(&target_door_state, new_value);
 }
-
 void current_door_state_set(uint8_t new_state) {
     LOG("New state: %d, old state: %d", new_state, _current_door_state);
     if (_current_door_state != new_state) {
@@ -279,51 +275,27 @@ void current_door_state_set(uint8_t new_state) {
 }
 
 void current_door_state_update_from_sensor() {
-    contact_sensor_state_t sensor_state = contact_sensor_state_get(REED_PIN);
-    LOG("Sensor state: %s", sensor_state == CONTACT_CLOSED ? "closed | door open" : "open | door closed");
+    bool sensor_state = contact_sensor_state_get(REED_PIN);
+    LOG("Sensor state: %s", boolToString(sensor_state));
 
-    switch (sensor_state) {
-        case CONTACT_CLOSED:
-            current_door_state_set(HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN);
-            break;
-        case CONTACT_OPEN:
-            current_door_state_set(HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED);
-            break;
-        default:
-            LOG("Unknown contact sensor event: %d", sensor_state);
+    if (sensor_state) {
+        current_door_state_set(HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN);
+    } else {
+        current_door_state_set(HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED);
     }
 }
-
-TickType_t lastInterruptTickCount = 0;
-contact_sensor_state_t lastInterruptContactState;
 
 /**
  * Called (indirectly) from the interrupt handler to notify the client of a state change.
  **/
-void contact_sensor_state_changed(uint8_t gpio, contact_sensor_state_t state) {
-    LOG("REED SWITCH INTERRUPT | contact '%s'.", state == CONTACT_OPEN ? "open | door closed" : "closed | door open");
-    LOG("Last Interrupt state | contact '%s'.", lastInterruptContactState == CONTACT_OPEN ? "open | door closed" : "closed | door open");
-
-    if (lastInterruptContactState == state) {
-        LOG("Interrupt called with the same state as before. Skip hazard");
-        return;
-    }
-    lastInterruptContactState = state;
-
-    TickType_t currentTickCount = xTaskGetTickCount();
-    TickType_t passedMs = (currentTickCount - lastInterruptTickCount) * 10;
-    lastInterruptTickCount = currentTickCount;
-    LOG("Passed ms: %d", passedMs);
-    if (passedMs < 400) {
-        LOG("Less than 400 ms passed since last interrupt. Skip");
-        return;
-    }
+void contact_sensor_state_changed(uint8_t gpio_num, bool gpio_state) {
+    LOG("REED SWITCH Interrupt GPIO%d: %s", gpio_num, boolToString(gpio_state));
     
     // Turn on LED when door open
-    led_write(state == CONTACT_CLOSED);
+    led_write(gpio_state);
     
     // Turn on light when door open
-    lamp_state_set(state == CONTACT_CLOSED);
+    lamp_state_set(gpio_state);
     _lamp_turned_on_from_interrupt += 1;
 
     if (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING ||
@@ -372,7 +344,7 @@ homekit_accessory_t *accessories[] = {
                     HOMEKIT_CHARACTERISTIC(NAME, "Garage Door"),
                     &current_door_state,
                     &target_door_state,
-                    &gdo_obstruction,
+                    HOMEKIT_CHARACTERISTIC(OBSTRUCTION_DETECTED, false),
                     NULL
                 }
             ),
@@ -411,12 +383,12 @@ static homekit_server_config_t config = {
 //// Main ////////////////////////////////////////////////
 
 void logVersion() {
-    LOG("Garage Door - init - v 2.0.4");
+    LOG("Garage Door - init - v1 | %s", BUILD_DATETIME);
 }
 
 void start_sntp() {
     /* Start SNTP */
-	printf("Starting SNTP... ");
+	printf("Starting SNTP...\n");
 	/* SNTP will request an update each 5 minutes */
 	sntp_set_update_delay(5*60000);
 	/* Set GMT zone, daylight savings off */
@@ -426,74 +398,68 @@ void start_sntp() {
 	/* Servers must be configured right after initialization */
     const char *servers[] = {SNTP_SERVERS};
 	sntp_set_servers(servers, sizeof(servers) / sizeof(char*));
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     time_t ts = time(NULL);
-	printf("TIME: %s", ctime(&ts));
-    
-    setenv("TZ", "PST8PDT7,M3.1.0,M11.1.0", 1);
+	printf("TIME: %s\n", ctime(&ts));
+    setenv("TZ", "", 1);
     tzset();
 }
 
-void wifi_scan_callback(bool wifi_found, bool socked_connected) {
-    LOG("WiFI ssid found: %s, socked connected: %s", boolToString(wifi_found), boolToString(socked_connected));
-}
-
-ip_addr_t get_gw_ip() {
-    struct ip_info info;
-    sdk_wifi_get_ip_info(STATION_IF, &info);
-    ip_addr_t gw_ip;
-    gw_ip.addr = info.gw.addr;
-    return gw_ip;
-}
-
-void wifi_watchdog_task(void *pvParameters) {
-    ip_addr_t to_ping = get_gw_ip();
-    LOG("Pinging gateway at IP %s", ipaddr_ntoa(&to_ping));
-    
-    ping_result_t res;
-    int ping_failure_count = 0;
-    
-    while (ping_failure_count <= MAX_PING_FAILURE_COUNT) {
-        ping_ip(to_ping, &res);
-        if (res.result_code == PING_RES_ECHO_REPLY) {
-            LOG("good ping from %s %u ms", ipaddr_ntoa(&res.response_ip), res.response_time_ms);
-        } else {
-            ping_failure_count += 1;
-            LOG("bad ping err %d # no. %d", res.result_code, ping_failure_count);
-        }
-        vTaskDelay(30000 / portTICK_PERIOD_MS);
-    }
+void on_ping_watchdog_fail_callback() {
+    LOG("Ping watchdog failed 30 times. Restart the device");
+    sdk_system_restart();
 }
 
 void on_wifi_ready() {
+    LOG("");
     start_sntp();
     logVersion();
-//    homekit_server_init(&config);
-    start_wifi_scan(WIFI_SSID, wifi_scan_callback);
-    xTaskCreate(wifi_watchdog_task, "wifi_watchdog_task", 2048, NULL, 2, NULL);
+    LOG("Starting TFTP server...");
+    ota_tftp_init_server(TFTP_PORT);
+    homekit_server_init(&config);
+    ip_addr_t to_ping = get_gw_ip();
+    start_ping_watchdog(to_ping, 30, 30, on_ping_watchdog_fail_callback);
 }
 
 void wifi_task(void *_args) {
+    LOG("");
     int count = 0;
-    while (sdk_wifi_station_get_connect_status() != STATION_GOT_IP) {
+    while (sdk_wifi_station_get_connect_status() != STATION_GOT_IP && count < 120) {
         count += 1;
         LOG("Waiting for WiFi: %d", count);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    if (count >= 120) {
+        LOG("Waited 120 seconds for WiFi connection. Restart the device");
+        sdk_system_restart();
     }
     on_wifi_ready();
     vTaskDelete(NULL);
 }
 
 static void wifi_init() {
+    LOG("Start WiFi | SSID: %s | Password: %s", WIFI_SSID, WIFI_PASSWORD);
     struct sdk_station_config wifi_config = {
         .ssid = WIFI_SSID,
         .password = WIFI_PASSWORD,
     };
-
+    sysparam_set_string("hostname", "esp8266x1");
     sdk_wifi_set_opmode(STATION_MODE);
     sdk_wifi_station_set_config(&wifi_config);
     sdk_wifi_station_connect();
     
     xTaskCreate(wifi_task, "WiFi task", 1024, NULL, 1, NULL);
+}
+
+static void ota_config() {
+    rboot_config conf = rboot_get_config();
+    printf("\r\n\r\nOTA Basic demo.\r\nCurrently running on flash slot %d / %d.\r\n\r\n",
+           conf.current_rom, conf.count);
+
+    printf("Image addresses in flash:\r\n");
+    for(int i = 0; i <conf.count; i++) {
+        printf("%c%d: offset 0x%08x\r\n", i == conf.current_rom ? '*':' ', i, conf.roms[i]);
+    }
 }
 
 void user_init(void) {
@@ -502,25 +468,24 @@ void user_init(void) {
     #endif /* GARAGE_DEBUG_UDP */
     
     uart_set_baud(0, 115200);
+
+    ota_config();
     
-    gpio_enable(LED_PIN, GPIO_OUTPUT);
-    gpio_write(LED_PIN, true);
-
-    vTaskDelay(3000 / portTICK_PERIOD_MS);
-
+    LOG("START");
+    
     logVersion();
 
-//    gpio_init();
-//    init_lamp_timer();
-//    init_gdo_timer();
-//
-//    LOG("Using Sensor at GPIO%d.", REED_PIN);
-//    if (contact_sensor_create(REED_PIN, contact_sensor_state_changed)) {
-//        LOG("Failed to initialize door");
-//    }
-//    lastInterruptContactState = contact_sensor_state_get(REED_PIN);
-//
-//    lamp_delayed_off_observer();
+    gpio_init();
+
+    init_lamp_timer();
+    init_gdo_timer();
+
+    LOG("Using REED Switch at GPIO%d.", REED_PIN);
+    if (interrupt_gpio_create(REED_PIN, false, false, 500, contact_sensor_state_changed)) {
+        LOG("Failed to initialize door");
+    }
+
+    lamp_delayed_off_observer();
     
     wifi_init();
 }

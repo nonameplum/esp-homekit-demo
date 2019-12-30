@@ -1,3 +1,4 @@
+#include "debug_helper.h"
 #include <string.h>
 #include "lwip/ip.h"
 #include "lwip/opt.h"
@@ -13,11 +14,22 @@
 #include "lwip/inet.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
+
+#include <esplibs/libmain.h>
+#include <espressif/esp_common.h>
+#include <FreeRTOS.h>
+#include <task.h>
 #include "ping_helper.h"
 
-#ifndef LWIP_RAW
-#error "LWIP_RAW must be activated in lwipopts.h"
+#if LWIP_RAW==1
+#else
+#error "LWIP_RAW must be 1 in lwipopts.h"
 #endif /* LWIP_RAW */
+
+#if DEFAULT_RAW_RECVMBOX_SIZE==5
+#else
+#error "DEFAULT_RAW_RECVMBOX_SIZE must be 5 in lwipopts.h"
+#endif /* DEFAULT_RAW_RECVMBOX_SIZE */
 
 /** ping receive timeout - in milliseconds */
 #ifndef PING_RCV_TIMEO
@@ -33,6 +45,15 @@
 #ifndef PING_DATA_SIZE
 #define PING_DATA_SIZE 32
 #endif
+
+typedef struct _ping_watchdog_context {
+    ip_addr_t ping_addr;
+    int duration_sec;
+    int max_failure_count;
+    ping_watchdog_fail_fn on_fail;
+} ping_watchdog_context_t;
+
+ping_watchdog_context_t *watchdog_context = NULL;
 
 /* ping variables */
 static u16_t ping_seq_num;
@@ -236,4 +257,46 @@ void ping_ip(ip_addr_t ping_target, ping_result_t *res) {
         }
     }
     lwip_close(s);
+}
+
+ip_addr_t get_gw_ip() {
+    struct ip_info info;
+    sdk_wifi_get_ip_info(STATION_IF, &info);
+    ip_addr_t gw_ip;
+    gw_ip.addr = info.gw.addr;
+    return gw_ip;
+}
+
+void wifi_watchdog_task(void *pvParameters) {
+    LOG("");
+    ip_addr_t to_ping = watchdog_context->ping_addr;
+    LOG("Pinging gateway at IP %s", ipaddr_ntoa(&to_ping));
+    
+    ping_result_t res;
+    int ping_failure_count = 0;
+    
+    while (ping_failure_count <= watchdog_context->max_failure_count) {
+        ping_ip(to_ping, &res);
+        if (res.result_code == PING_RES_ECHO_REPLY) {
+            ping_failure_count = 0;
+            LOG("good ping from %s %u ms", ipaddr_ntoa(&res.response_ip), res.response_time_ms);
+        } else {
+            ping_failure_count += 1;
+            LOG("bad ping err %d # no. %d", res.result_code, ping_failure_count);
+        }
+        vTaskDelay((watchdog_context->duration_sec * 1000) / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
+void start_ping_watchdog(ip_addr_t ping_addr, int duration_sec, int max_failure_count, ping_watchdog_fail_fn on_fail_callback) {
+    watchdog_context = malloc(sizeof(ping_watchdog_context_t));
+    memset(watchdog_context, 0, sizeof(*watchdog_context));
+    
+    watchdog_context->ping_addr = ping_addr;
+    watchdog_context->duration_sec = duration_sec;
+    watchdog_context->max_failure_count = max_failure_count;
+    watchdog_context->on_fail = on_fail_callback;
+    
+    xTaskCreate(wifi_watchdog_task, "wifi_watchdog_task", 1024, NULL, 2, NULL);
 }

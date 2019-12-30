@@ -2,6 +2,9 @@
 #define LWIP_PING_H
 
 #include "lwip/ip_addr.h"
+#include <espressif/esp_wifi.h>
+
+typedef void (*ping_watchdog_fail_fn)();
 
 typedef enum {
     PING_RES_NO_MEM,                /* internal memory alloc failure */
@@ -22,5 +25,9 @@ typedef struct {
 } ping_result_t;
 
 void ping_ip(ip_addr_t ping_addr, ping_result_t *res);
+
+ip_addr_t get_gw_ip();
+
+void start_ping_watchdog(ip_addr_t ping_addr, int duration_sec, int max_failure_count, ping_watchdog_fail_fn on_fail_callback);
 
 #endif /* LWIP_PING_H */
