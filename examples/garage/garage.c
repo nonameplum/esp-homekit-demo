@@ -11,28 +11,16 @@
 
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
-#include <wifi_config.h>
 #include <udplogger.h>
-#include <sntp.h>
-#include <time.h>
-
-#include <lwip/api.h>
-#include "lwip/etharp.h"
-#include "netif/ethernet.h"
-#include "sysparam.h"
-
-#include "ota-tftp.h"
 #include "rboot-api.h"
 
 #include "wifi.h"
-#include <wifi_scan.h>
 #include <debug_helper.h>
 #include <interrupt_gpio.h>
 #include <button_sensor.h>
 #include <ping_helper.h>
-
-#define SNTP_SERVERS 	"0.pool.ntp.org", "1.pool.ntp.org", \
-						"2.pool.ntp.org", "3.pool.ntp.org"      
+#include <wifi_setup.h>   
+#include <spi_ota_build_failure.h>
 
 // Possible values for characteristic CURRENT_DOOR_STATE:
 #define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN 0
@@ -381,85 +369,12 @@ static homekit_server_config_t config = {
 };
 
 //// Main ////////////////////////////////////////////////
-
 void logVersion() {
     LOG("Garage Door - init - v1 | %s", BUILD_DATETIME);
 }
 
-void start_sntp() {
-    /* Start SNTP */
-	printf("Starting SNTP...\n");
-	/* SNTP will request an update each 5 minutes */
-	sntp_set_update_delay(5*60000);
-	/* Set GMT zone, daylight savings off */
-	const struct timezone tz = {0, 0};
-	/* SNTP initialization */
-	sntp_initialize(&tz);
-	/* Servers must be configured right after initialization */
-    const char *servers[] = {SNTP_SERVERS};
-	sntp_set_servers(servers, sizeof(servers) / sizeof(char*));
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    time_t ts = time(NULL);
-	printf("TIME: %s\n", ctime(&ts));
-    setenv("TZ", "", 1);
-    tzset();
-}
-
-void on_ping_watchdog_fail_callback() {
-    LOG("Ping watchdog failed 30 times. Restart the device");
-    sdk_system_restart();
-}
-
-void on_wifi_ready() {
-    LOG("");
-    start_sntp();
-    logVersion();
-    LOG("Starting TFTP server...");
-    ota_tftp_init_server(TFTP_PORT);
+void wifi_connected_handler() {
     homekit_server_init(&config);
-    ip_addr_t to_ping = get_gw_ip();
-    start_ping_watchdog(to_ping, 30, 30, on_ping_watchdog_fail_callback);
-}
-
-void wifi_task(void *_args) {
-    LOG("");
-    int count = 0;
-    while (sdk_wifi_station_get_connect_status() != STATION_GOT_IP && count < 120) {
-        count += 1;
-        LOG("Waiting for WiFi: %d", count);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-    if (count >= 120) {
-        LOG("Waited 120 seconds for WiFi connection. Restart the device");
-        sdk_system_restart();
-    }
-    on_wifi_ready();
-    vTaskDelete(NULL);
-}
-
-static void wifi_init() {
-    LOG("Start WiFi | SSID: %s | Password: %s", WIFI_SSID, WIFI_PASSWORD);
-    struct sdk_station_config wifi_config = {
-        .ssid = WIFI_SSID,
-        .password = WIFI_PASSWORD,
-    };
-    sysparam_set_string("hostname", "esp8266x1");
-    sdk_wifi_set_opmode(STATION_MODE);
-    sdk_wifi_station_set_config(&wifi_config);
-    sdk_wifi_station_connect();
-    
-    xTaskCreate(wifi_task, "WiFi task", 1024, NULL, 1, NULL);
-}
-
-static void ota_config() {
-    rboot_config conf = rboot_get_config();
-    printf("\r\n\r\nOTA Basic demo.\r\nCurrently running on flash slot %d / %d.\r\n\r\n",
-           conf.current_rom, conf.count);
-
-    printf("Image addresses in flash:\r\n");
-    for(int i = 0; i <conf.count; i++) {
-        printf("%c%d: offset 0x%08x\r\n", i == conf.current_rom ? '*':' ', i, conf.roms[i]);
-    }
 }
 
 void user_init(void) {
@@ -468,12 +383,11 @@ void user_init(void) {
     #endif /* GARAGE_DEBUG_UDP */
     
     uart_set_baud(0, 115200);
-
-    ota_config();
     
     LOG("START");
-    
     logVersion();
+
+    init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
 
     gpio_init();
 
@@ -487,5 +401,5 @@ void user_init(void) {
 
     lamp_delayed_off_observer();
     
-    wifi_init();
+    wifi_init(WIFI_SSID, WIFI_PASSWORD, "sonoffxg1", true, wifi_connected_handler);
 }

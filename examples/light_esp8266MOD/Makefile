@@ -1,16 +1,15 @@
 PROGRAM = garage_light
 
 EXTRA_COMPONENTS = \
-	lwip \
 	extras/http-parser \
 	extras/dhcpserver \
+	extras/spiffs \
+	extras/rboot-ota \
 	extras/sntp \
 	$(abspath ../../components/esp-8266/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
 	$(abspath ../../components/common/helpers) \
-	$(abspath ../../components/esp-8266/led-status) \
-	$(abspath ../../components/esp-8266/wifi_config) \
 	$(abspath ../../../UDPlogger) \
 
 ESPPORT=/dev/tty.SLAB_USBtoUART
@@ -26,6 +25,9 @@ RELAY_PIN ?= 4
 LED_PIN ?= 2
 SWITCH_PIN ?= 0
 
+BUILD_DATETIME ?= "Build time: $(shell date "+%d-%m-%y %H:%M:%S")"
+$(info $(BUILD_DATETIME))
+
 EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS 
 EXTRA_CFLAGS += -DINPUT_PIN=$(INPUT_PIN) 
 EXTRA_CFLAGS += -DRELAY_PIN=$(RELAY_PIN)
@@ -36,6 +38,8 @@ EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_ALSO_SERIAL
 # EXTRA_CFLAGS += -DHOMEKIT_DEBUG
 # EXTRA_CFLAGS += -DDEBUG_HELPER
+
+EXTRA_CFLAGS += -DBUILD_DATETIME=\"$(BUILD_DATETIME)\"
 
 include $(SDK_PATH)/common.mk
 
