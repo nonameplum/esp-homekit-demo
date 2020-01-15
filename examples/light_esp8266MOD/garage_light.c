@@ -23,6 +23,8 @@
 ETSTimer lamp_timer;
 ETSTimer await_door_close_timer;
 homekit_value_t light_on_get();
+homekit_value_t light_sensor_on_get();
+homekit_characteristic_t light_characteristic;
 homekit_characteristic_t light_sensor_characteristic;
 
 // GPIO 
@@ -37,12 +39,15 @@ bool relay_read() {
     return on;
 }
 
-void relay_write(bool on) {
+void relay_write(bool on, bool notify) {
     bool prevOn = relay_read();
     LOG("GPIO%d (RELAY): %s, prevOn: %s", RELAY_PIN, boolToString(on), boolToString(prevOn));
     if (on != prevOn) {
         gpio_write(RELAY_PIN, on);
-        homekit_characteristic_notify(&light_sensor_characteristic, light_on_get());
+        homekit_characteristic_notify(&light_sensor_characteristic, light_sensor_on_get());
+        if (notify) {
+            homekit_characteristic_notify(&light_characteristic, light_on_get());
+        }
     }
 }
 
@@ -151,14 +156,14 @@ void LOG_STATE_EVENT(const char * const name, enum State state, enum Event event
 enum State light_off(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_off", state, event);
     stop_timers();
-    relay_write(false);
+    relay_write(false, true);
     return ST_OFF;
 }
 
 enum State light_on(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_on", state, event);
     stop_timers();
-    relay_write(true);
+    relay_write(true, true);
     lastLightOnTickCount = xTaskGetTickCount();
     return ST_ON;
 }
@@ -167,14 +172,14 @@ enum State light_on_auto_off(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_on_auto_off", state, event);
     stop_timers();
     start_lamp_timer();
-    relay_write(true);
+    relay_write(true, true);
     return ST_ON_AUTO_OFF;
 }
 
 enum State light_on_conditional(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_on_conditional", state, event);
     stop_timers();
-    relay_write(true);
+    relay_write(true, true);
     TickType_t currentLightOnTickCount = xTaskGetTickCount();
     TickType_t passedMs = (currentLightOnTickCount - lastLightOnTickCount) * 10;
     if (passedMs <= AWAIT_GARAGE_DOOR_CLOSE_TIME_MS) {
@@ -241,11 +246,11 @@ void input_callback(uint8_t gpio_num, bool gpio_state) {
 // HomeKit
 // Identify
 void light_sensor_identify(homekit_value_t _value) {
-    LOG("Light sensor identify");
+    LOG("Light sensor identify: %d", _value.format);
 }
 
 void light_identify(homekit_value_t _value) {
-    LOG("Light identify");
+    LOG("Light identify: %d", _value.format);
 }
 
 // Getter & Setter
@@ -254,12 +259,24 @@ homekit_value_t light_on_get() {
 }
 
 void light_on_set(homekit_value_t value) {
+    LOG("Light set: %d [format: %d", value.bool_value, value.format);
     step_state(EV_SWITCH);
 }
 
+homekit_value_t light_sensor_on_get() {
+    return HOMEKIT_UINT8(relay_read());
+}
+
 // Characteristics
-homekit_characteristic_t light_sensor_characteristic = HOMEKIT_CHARACTERISTIC_(CONTACT_SENSOR_STATE, 0,
+homekit_characteristic_t light_characteristic = HOMEKIT_CHARACTERISTIC_(
+    ON, false,
     .getter=light_on_get,
+    .setter=light_on_set
+);
+
+homekit_characteristic_t light_sensor_characteristic = HOMEKIT_CHARACTERISTIC_(
+    CONTACT_SENSOR_STATE, 0,
+    .getter=light_sensor_on_get,
     .setter=NULL,
     NULL
 );
@@ -279,15 +296,14 @@ homekit_accessory_t *accessories[] = {
                 HOMEKIT_CHARACTERISTIC(IDENTIFY, light_identify),
                 NULL
             }),
-            HOMEKIT_SERVICE(LIGHTBULB, .primary=true, .characteristics=(homekit_characteristic_t*[]){
-                HOMEKIT_CHARACTERISTIC(NAME, "GarageInsideLight"),
-                HOMEKIT_CHARACTERISTIC(
-                    ON, false,
-                    .getter=light_on_get,
-                    .setter=light_on_set
-                ),
-                NULL
-            }),
+            HOMEKIT_SERVICE(LIGHTBULB, 
+                .primary=true, 
+                .characteristics=(homekit_characteristic_t*[]) {
+                    HOMEKIT_CHARACTERISTIC(NAME, "GarageInsideLight"),
+                    &light_characteristic,
+                    NULL
+                },
+            ),
             NULL
         }
     ),
@@ -329,6 +345,7 @@ homekit_server_config_t config = {
 
 // Main
 void wifi_connected_handler() {
+    LOG("Homekit server init");
     homekit_server_init(&config);
 }
 
@@ -341,18 +358,18 @@ void user_init(void) {
     
     LOG("START");
 
-    init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
+    // init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
 
     gpio_init();
     led_write(false);
     init_lamp_timer();
     init_await_door_close_timer();
     
-    LOG("Create input interrupt on INPUT_PIN [GPIO%d]", INPUT_PIN);
+    LOG("Create input interrupt on INPUT_PIN [GPIO%d]", INPUT_PIN); // Outside garage light 
     interrupt_gpio_create(INPUT_PIN, true, true, 500, input_callback);
 
     LOG("Create input interrupt on SWITCH_PIN [GPIO%d]", SWITCH_PIN);
-    interrupt_gpio_create(SWITCH_PIN, true, true, 500, input_callback);
+    interrupt_gpio_create(SWITCH_PIN, true, true, 500, input_callback); // Garage wall switch
 
     wifi_init(WIFI_SSID, WIFI_PASSWORD, "esp8266xg2", true, wifi_connected_handler);
 }
