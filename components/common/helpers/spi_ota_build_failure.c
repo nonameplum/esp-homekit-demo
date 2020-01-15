@@ -107,5 +107,5 @@ void init_ota_update_failure_check(char *buildInfo, uint8_t maxFailureCount, int
     appMaxFailureCount = maxFailureCount;
     appInTimeIntervalMs = inTimeIntervalMs;
     strcpy(appBuildInfo, buildInfo);
-    set_user_exception_handler(exception_handler);
+    //set_user_exception_handler(exception_handler);
 }

@@ -352,11 +352,15 @@ homekit_accessory_t *accessories[] = {
                 HOMEKIT_CHARACTERISTIC(IDENTIFY, lamp_identify),
                 NULL
             }),
-            HOMEKIT_SERVICE(LIGHTBULB, .primary=true, .characteristics=(homekit_characteristic_t*[]) {
-                HOMEKIT_CHARACTERISTIC(NAME, "Garage Lamp"),
-                &lamp_on,
-                NULL
-            }),
+            HOMEKIT_SERVICE(
+                LIGHTBULB, 
+                .primary=true, 
+                .characteristics=(homekit_characteristic_t*[]) {
+                    HOMEKIT_CHARACTERISTIC(NAME, "Garage Lamp"),
+                    &lamp_on,
+                    NULL
+                }
+            ),
             NULL
         }
     ),
