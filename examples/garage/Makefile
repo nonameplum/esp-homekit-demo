@@ -6,11 +6,11 @@ EXTRA_COMPONENTS = \
 	extras/dhcpserver \
 	extras/sntp \
 	extras/rboot-ota \
-	$(abspath ../../components/esp-8266/cJSON) \
+	$(abspath ../../components/esp8266-open-rtos/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
-	$(abspath ../../components/esp-8266/led-status) \
-	$(abspath ../../components/esp-8266/wifi_config) \
+	$(abspath ../../components/esp8266-open-rtos/led-status) \
+	$(abspath ../../components/esp8266-open-rtos/wifi_config) \
 	$(abspath ../../helpers) \
 	$(abspath ../../../UDPlogger) \
 

@@ -6,7 +6,7 @@ EXTRA_COMPONENTS = \
 	extras/spiffs \
 	extras/rboot-ota \
 	extras/sntp \
-	$(abspath ../../components/esp-8266/cJSON) \
+	$(abspath ../../components/esp8266-open-rtos/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
 	$(abspath ../../helpers) \
