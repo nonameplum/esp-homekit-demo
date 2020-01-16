@@ -9,7 +9,7 @@ EXTRA_COMPONENTS = \
 	$(abspath ../../components/esp-8266/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
-	$(abspath ../../components/common/helpers) \
+	$(abspath ../../helpers) \
 	$(abspath ../../../UDPlogger) \
 
 ESPPORT=/dev/tty.SLAB_USBtoUART

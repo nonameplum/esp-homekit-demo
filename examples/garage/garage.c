@@ -391,7 +391,7 @@ void user_init(void) {
     LOG("START");
     logVersion();
 
-    init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
+    // init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
 
     gpio_init();
 

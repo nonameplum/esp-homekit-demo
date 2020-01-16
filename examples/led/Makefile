@@ -6,12 +6,7 @@ EXTRA_COMPONENTS = \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit)
 
-# ESPPORT=/dev/tty.SLAB_USBtoUART
-ESPPORT=/dev/cu.usbserial-AH0707RK
-
 FLASH_SIZE ?= 32
-FLASH_MODE ?= dio
-FLASH_SPEED ?= 40
 
 EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS
 

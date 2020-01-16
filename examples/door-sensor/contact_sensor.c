@@ -29,7 +29,6 @@ contact_sensor_state_t contact_sensor_state_get(uint8_t gpio_num) {
 
 
 void contact_sensor_intr_callback(uint8_t gpio) {
-    printf("contact_sensor_intr_callback\n");
     contact_sensor_t *sensor = contact_sensor_find_by_gpio(gpio);
     if (!sensor)
         return;
@@ -51,7 +50,6 @@ int contact_sensor_create(const uint8_t gpio_num, contact_sensor_callback_fn cal
     sensor->next = sensors;
     sensors = sensor;
 
-    gpio_enable(sensor->gpio_num, GPIO_INPUT);
     gpio_set_pullup(sensor->gpio_num, true, true);
     gpio_set_interrupt(sensor->gpio_num, GPIO_INTTYPE_EDGE_ANY, contact_sensor_intr_callback);
 
