@@ -1,9 +1,6 @@
 [submodule "components/wolfssl"]
 	path = components/common/wolfssl
 	url = https://github.com/maximkulkin/esp-wolfssl
-[submodule "components/homekit"]
-	path = components/common/homekit
-	url = https://github.com/maximkulkin/esp-homekit
 [submodule "components/esp32/idf/http-parser"]
 	path = components/esp-idf/http-parser
 	url = https://github.com/maximkulkin/esp-http-parser.git
@@ -25,3 +22,6 @@
 [submodule "components/esp8266-open-rtos/wifi_config"]
 	path = components/esp8266-open-rtos/wifi_config
 	url = https://github.com/maximkulkin/esp-wifi-config
+[submodule "components/homekit"]
+	path = components/common/homekit
+	url = file:///Volumes/esp8266/esp-homekit
