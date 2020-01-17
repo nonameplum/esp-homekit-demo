@@ -25,3 +25,4 @@
 [submodule "components/homekit"]
 	path = components/common/homekit
 	url = file:///Volumes/esp8266/esp-homekit
+	branch = my_master
