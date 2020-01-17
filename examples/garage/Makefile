@@ -1,7 +1,6 @@
 PROGRAM = garage
 
 EXTRA_COMPONENTS = \
-	lwip \
 	extras/http-parser \
 	extras/dhcpserver \
 	extras/sntp \
@@ -9,8 +8,6 @@ EXTRA_COMPONENTS = \
 	$(abspath ../../components/esp8266-open-rtos/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
-	$(abspath ../../components/esp8266-open-rtos/led-status) \
-	$(abspath ../../components/esp8266-open-rtos/wifi_config) \
 	$(abspath ../../helpers) \
 	$(abspath ../../../UDPlogger) \
 
