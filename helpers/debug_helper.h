@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <udplogger.h>
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 char* getFormattedTime(void);
 char* boolToString(bool value);
@@ -27,9 +30,7 @@ void silent_unused_args(const char *__restrict, ...);
             printf(format, ##__VA_ARGS__); \
         } while(0)
 
-    #endif /* DEBUG_HELPER_UDP */
-
-    #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+    #endif
 
     #define LOG(format, ...) \
     do { \

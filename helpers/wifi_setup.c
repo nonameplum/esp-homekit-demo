@@ -16,6 +16,10 @@
 #include "ping_helper.h"
 #include "debug_helper.h"
 
+#define WIFI_WAIT_MAX_SEC 120
+#define PING_MAX_FAIL 10
+#define PING_DURATION_SEC 15
+
 #define SNTP_SERVERS 	"0.pool.ntp.org", "1.pool.ntp.org", \
 						"2.pool.ntp.org", "3.pool.ntp.org"   
 
@@ -42,7 +46,7 @@ static void start_sntp() {
 }
 
 static void on_ping_watchdog_fail_callback() {
-    LOG("Ping watchdog failed 30 times. Restart the device");
+    LOG("Ping watchdog failed %d [%d sec] times. Restart the device", PING_MAX_FAIL, PING_MAX_FAIL * PING_DURATION_SEC);
     sdk_system_restart();
 }
 
@@ -54,7 +58,7 @@ static void on_wifi_ready() {
         ota_tftp_init_server(TFTP_PORT);
     }
     ip_addr_t to_ping = get_gw_ip();
-    start_ping_watchdog(to_ping, 30, 30, on_ping_watchdog_fail_callback);
+    start_ping_watchdog(to_ping, PING_DURATION_SEC, PING_MAX_FAIL, on_ping_watchdog_fail_callback);
     if (wifi_connected != NULL) {
         wifi_connected();
     }
@@ -68,8 +72,8 @@ static void wifi_task(void *_args) {
         LOG("Waiting for WiFi: %d", count);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-    if (count >= 120) {
-        LOG("Waited 120 seconds for WiFi connection. Restart the device");
+    if (count >= WIFI_WAIT_MAX_SEC) {
+        LOG("Waited %d seconds for WiFi connection. Restart the device", WIFI_WAIT_MAX_SEC);
         sdk_system_restart();
     }
     on_wifi_ready();

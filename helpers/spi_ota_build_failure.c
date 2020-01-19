@@ -84,7 +84,7 @@ void store_ota_update_failure_build(char *buildInfo) {
     }
 }
 
-void exception_handler() {
+static void exception_handler() {
     if (appBuildInfo == NULL) {
         return;
     }
@@ -103,9 +103,10 @@ void log_ota_config() {
 }
 
 void init_ota_update_failure_check(char *buildInfo, uint8_t maxFailureCount, int inTimeIntervalMs) {
+    set_user_exception_handler(exception_handler);
+
     log_ota_config();
     appMaxFailureCount = maxFailureCount;
     appInTimeIntervalMs = inTimeIntervalMs;
-    strcpy(appBuildInfo, buildInfo);
-    //set_user_exception_handler(exception_handler);
+    strcpy(appBuildInfo, buildInfo);   
 }

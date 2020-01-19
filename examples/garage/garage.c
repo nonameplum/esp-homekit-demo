@@ -382,9 +382,9 @@ void wifi_connected_handler() {
 }
 
 void user_init(void) {
-    #ifdef GARAGE_DEBUG_UDP
+    #ifdef DEBUG_HELPER_UDP
     udplog_init(3);
-    #endif /* GARAGE_DEBUG_UDP */
+    #endif /* DEBUG_HELPER_UDP */
     
     uart_set_baud(0, 115200);
     
@@ -405,5 +405,5 @@ void user_init(void) {
 
     lamp_delayed_off_observer();
     
-    wifi_init(WIFI_SSID, WIFI_PASSWORD, "sonoffxg1", true, wifi_connected_handler);
+    wifi_init(WIFI_SSID, WIFI_PASSWORD, "esp8266xg1", true, wifi_connected_handler);
 }

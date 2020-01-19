@@ -9,14 +9,13 @@
 #include <etstimer.h>
 #include <esplibs/libmain.h>
 #include <time.h>
+#include <debug_helper.h>
 
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
-#include <udplogger.h>
 
 #include "wifi.h"
 #include <interrupt_gpio.h>
-#include <debug_helper.h>
 #include <spi_ota_build_failure.h>
 #include <wifi_setup.h>
 
@@ -44,9 +43,9 @@ void relay_write(bool on, bool notify) {
     LOG("GPIO%d (RELAY): %s, prevOn: %s", RELAY_PIN, boolToString(on), boolToString(prevOn));
     if (on != prevOn) {
         gpio_write(RELAY_PIN, on);
-        homekit_characteristic_notify(&light_sensor_characteristic, light_sensor_on_get());
         if (notify) {
             homekit_characteristic_notify(&light_characteristic, light_on_get());
+            homekit_characteristic_notify(&light_sensor_characteristic, light_sensor_on_get());
         }
     }
 }
@@ -350,7 +349,9 @@ void wifi_connected_handler() {
 }
 
 void user_init(void) {
-    #ifdef GARAGE_DEBUG_UDP
+    // init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
+
+    #ifdef DEBUG_HELPER_UDP
     udplog_init(3);
     #endif /* GARAGE_DEBUG_UDP */
     
@@ -358,18 +359,16 @@ void user_init(void) {
     
     LOG("START");
 
-    // init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
-
     gpio_init();
     led_write(false);
     init_lamp_timer();
     init_await_door_close_timer();
     
     LOG("Create input interrupt on INPUT_PIN [GPIO%d]", INPUT_PIN); // Outside garage light 
-    interrupt_gpio_create(INPUT_PIN, true, true, 500, input_callback);
+    interrupt_gpio_create(INPUT_PIN, true, true, 400, input_callback);
 
     LOG("Create input interrupt on SWITCH_PIN [GPIO%d]", SWITCH_PIN);
-    interrupt_gpio_create(SWITCH_PIN, true, true, 500, input_callback); // Garage wall switch
+    interrupt_gpio_create(SWITCH_PIN, true, true, 250, input_callback); // Garage wall switch
 
     wifi_init(WIFI_SSID, WIFI_PASSWORD, "esp8266xg2", true, wifi_connected_handler);
 }

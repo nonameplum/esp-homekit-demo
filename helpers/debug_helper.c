@@ -22,5 +22,4 @@ char* boolToString(bool value) {
 }
 
 void silent_unused_args(const char *__restrict message, ...) {
-    // do nothing
 }
