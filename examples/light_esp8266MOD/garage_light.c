@@ -287,7 +287,7 @@ homekit_accessory_t *accessories[] = {
         .category=homekit_accessory_category_lightbulb, 
         .services=(homekit_service_t*[]) {
             HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]){
-                HOMEKIT_CHARACTERISTIC(NAME, "GarageInsideLight"),
+                HOMEKIT_CHARACTERISTIC(NAME, "Garage Inside"),
                 HOMEKIT_CHARACTERISTIC(MANUFACTURER, "PLUM"),
                 HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "037A2BABF19D"),
                 HOMEKIT_CHARACTERISTIC(MODEL, "Light"),
@@ -369,6 +369,9 @@ void user_init(void) {
 
     LOG("Create input interrupt on SWITCH_PIN [GPIO%d]", SWITCH_PIN);
     interrupt_gpio_create(SWITCH_PIN, true, true, 250, input_callback); // Garage wall switch
+
+    LOG("Reset homekit server");
+    homekit_server_reset();
 
     wifi_init(WIFI_SSID, WIFI_PASSWORD, "esp8266xg2", true, wifi_connected_handler);
 }

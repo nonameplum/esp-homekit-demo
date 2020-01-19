@@ -277,7 +277,7 @@ void wifi_watchdog_task(void *pvParameters) {
     
     while (ping_failure_count <= watchdog_context->max_failure_count) {
         ping_ip(to_ping, &res);
-        if (res.result_code == PING_RES_ECHO_REPLY) {
+        if (res.result_code == PING_RES_ECHO_REPLY && res.response_time_ms < 2000) {
             ping_failure_count = 0;
             LOG("good ping from %s %u ms", ipaddr_ntoa(&res.response_ip), res.response_time_ms);
         } else {

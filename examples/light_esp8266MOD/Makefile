@@ -6,11 +6,11 @@ EXTRA_COMPONENTS = \
 	extras/spiffs \
 	extras/rboot-ota \
 	extras/sntp \
-	$(abspath ../../../UDPlogger) \
-	$(abspath ../../helpers) \
 	$(abspath ../../components/esp8266-open-rtos/cJSON) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit) \
+	$(abspath ../../../UDPlogger) \
+	$(abspath ../../helpers) \
 
 ESPPORT=/dev/tty.SLAB_USBtoUART
 #ESPPORT=/dev/cu.usbserial-AH0707RK
@@ -43,7 +43,7 @@ EXTRA_CFLAGS += -DDEBUG_HELPER
 EXTRA_CFLAGS += -DDEBUG_HELPER_UDP
 EXTRA_CFLAGS += -DBUILD_DATETIME=\"$(BUILD_DATETIME)\"
 
-# EXTRA_CFLAGS += -DHOMEKIT_DEBUG
+EXTRA_CFLAGS += -DHOMEKIT_DEBUG
 
 include $(SDK_PATH)/common.mk
 
