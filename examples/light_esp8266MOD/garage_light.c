@@ -38,15 +38,13 @@ bool relay_read() {
     return on;
 }
 
-void relay_write(bool on, bool notify) {
+void relay_write(bool on) {
     bool prevOn = relay_read();
     LOG("GPIO%d (RELAY): %s, prevOn: %s", RELAY_PIN, boolToString(on), boolToString(prevOn));
     if (on != prevOn) {
         gpio_write(RELAY_PIN, on);
-        if (notify) {
-            homekit_characteristic_notify(&light_characteristic, light_on_get());
-            homekit_characteristic_notify(&light_sensor_characteristic, light_sensor_on_get());
-        }
+        homekit_characteristic_notify(&light_characteristic, light_on_get());
+        homekit_characteristic_notify(&light_sensor_characteristic, light_sensor_on_get());
     }
 }
 
@@ -68,7 +66,6 @@ enum State {
 enum Event {
     EV_SWITCH,
     EV_GARAGE_OPENED,
-    EV_GARAGE_OPENED_CONDITIONAL,
     EV_DELAYED_OFF,
     EV_AWAIT_DOOR_CLOSE_FINISHED,
     EV_GARAGE_CLOSED,
@@ -139,7 +136,6 @@ const char *event_description(enum Event event) {
     switch (event) {
         case EV_SWITCH: return "EV_SWITCH";
         case EV_GARAGE_OPENED: return "EV_GARAGE_OPENED";
-        case EV_GARAGE_OPENED_CONDITIONAL: return "EV_GARAGE_OPENED_CONDITIONAL";
         case EV_DELAYED_OFF: return "EV_DELAYED_OFF";
         case EV_AWAIT_DOOR_CLOSE_FINISHED: return "EV_AWAIT_DOOR_CLOSE_FINISHED";
         case EV_GARAGE_CLOSED: return "EV_GARAGE_CLOSED";
@@ -155,14 +151,14 @@ void LOG_STATE_EVENT(const char * const name, enum State state, enum Event event
 enum State light_off(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_off", state, event);
     stop_timers();
-    relay_write(false, true);
+    relay_write(false);
     return ST_OFF;
 }
 
 enum State light_on(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_on", state, event);
     stop_timers();
-    relay_write(true, true);
+    relay_write(true);
     lastLightOnTickCount = xTaskGetTickCount();
     return ST_ON;
 }
@@ -170,15 +166,15 @@ enum State light_on(enum State state, enum Event event) {
 enum State light_on_auto_off(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_on_auto_off", state, event);
     stop_timers();
+    relay_write(true);
     start_lamp_timer();
-    relay_write(true, true);
     return ST_ON_AUTO_OFF;
 }
 
 enum State light_on_conditional(enum State state, enum Event event) {
     LOG_STATE_EVENT("light_on_conditional", state, event);
     stop_timers();
-    relay_write(true, true);
+    relay_write(true);
     TickType_t currentLightOnTickCount = xTaskGetTickCount();
     TickType_t passedMs = (currentLightOnTickCount - lastLightOnTickCount) * 10;
     if (passedMs <= AWAIT_GARAGE_DOOR_CLOSE_TIME_MS) {
@@ -199,7 +195,7 @@ event_handler transitions[ST_MAX][EV_MAX] = {
     },
     [ST_ON] = {   
         [EV_SWITCH] = light_off,
-        [EV_GARAGE_OPENED_CONDITIONAL] = light_on_conditional,
+        [EV_GARAGE_OPENED] = light_on_conditional,
     },
     [ST_ON_AUTO_OFF] = {
         [EV_SWITCH] = light_off,
@@ -216,7 +212,7 @@ void step_state(enum Event event) {
     LOG_STATE_EVENT("!>>> step_state: received event", state, event);
     event_handler handler = transitions[state][event];
     if (!handler) {
-        LOG("No state handle for state: %d, event: %d", state, event);
+        LOG("No state handle for state: %s, event: %s", state_description(state), event_description(event));
         return;
     }
     state = handler(state, event);
@@ -227,9 +223,11 @@ void step_state(enum Event event) {
 
 // Input pin callback
 void input_callback(uint8_t gpio_num, bool gpio_state) {
-    LOG("Interrupt GPIO%d [Outside LAMP]: %s", gpio_num, boolToString(gpio_state));
+    
     switch (gpio_num) {
         case INPUT_PIN:
+            LOG("Interrupt GPIO%d [INPUT_PIN]: %s", gpio_num, boolToString(gpio_state));
+            led_write(gpio_state);
             if (gpio_state) {
                 step_state(EV_GARAGE_OPENED);
             } else {
@@ -237,6 +235,7 @@ void input_callback(uint8_t gpio_num, bool gpio_state) {
             }
             break;
         case SWITCH_PIN:
+            LOG("Interrupt GPIO%d [SWITCH_PIN]: %s", gpio_num, boolToString(gpio_state));
             step_state(EV_SWITCH);
             break;
     }
@@ -350,10 +349,10 @@ void wifi_connected_handler() {
 
 void user_init(void) {
     // init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
-
-    #ifdef DEBUG_HELPER_UDP
+    
+    #ifdef DUDPLOG_PRINTF_TO_UDP
     udplog_init(3);
-    #endif /* GARAGE_DEBUG_UDP */
+    #endif /* DUDPLOG_PRINTF_TO_UDP */
     
     uart_set_baud(0, 115200);
     
@@ -369,9 +368,6 @@ void user_init(void) {
 
     LOG("Create input interrupt on SWITCH_PIN [GPIO%d]", SWITCH_PIN);
     interrupt_gpio_create(SWITCH_PIN, true, true, 250, input_callback); // Garage wall switch
-
-    LOG("Reset homekit server");
-    homekit_server_reset();
 
     wifi_init(WIFI_SSID, WIFI_PASSWORD, "esp8266xg2", true, wifi_connected_handler);
 }

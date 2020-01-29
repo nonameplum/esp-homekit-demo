@@ -46,6 +46,14 @@
 #define PING_DATA_SIZE 32
 #endif
 
+/** ping watchdog start delay - in seconds */
+#ifndef PING_WATCHDOG_START_DELAY
+#define PING_WATCHDOG_START_DELAY 10
+#endif
+
+/** ping duration during the failure - in seconds */
+#define PING_ON_FAILURE_DURATION 1
+
 typedef struct _ping_watchdog_context {
     ip_addr_t ping_addr;
     int duration_sec;
@@ -268,7 +276,9 @@ ip_addr_t get_gw_ip() {
 }
 
 void wifi_watchdog_task(void *pvParameters) {
-    LOG("");
+    LOG("Start ping watchdog task");
+    vTaskDelay((PING_WATCHDOG_START_DELAY * 1000) / portTICK_PERIOD_MS);
+
     ip_addr_t to_ping = watchdog_context->ping_addr;
     LOG("Pinging gateway at IP %s", ipaddr_ntoa(&to_ping));
     
@@ -284,7 +294,8 @@ void wifi_watchdog_task(void *pvParameters) {
             ping_failure_count += 1;
             LOG("bad ping err %d # no. %d", res.result_code, ping_failure_count);
         }
-        vTaskDelay((watchdog_context->duration_sec * 1000) / portTICK_PERIOD_MS);
+        int duration = ping_failure_count > 0 ? PING_ON_FAILURE_DURATION : watchdog_context->duration_sec;
+        vTaskDelay((duration * 1000) / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }

@@ -57,8 +57,6 @@ const char *state_description(uint8_t state) {
     }
 }
 
-void start_ping();
-
 //// GPIO setup
 static void led_write(bool on) {
     LOG("Led write: %s. (org: %s)", boolToString(!on), boolToString(on));
@@ -75,6 +73,10 @@ static void lamp_write(bool on) {
     gpio_write(LAMP_PIN, on);
 }
 
+static bool lamp_read() {
+    return gpio_read(LAMP_PIN);
+}
+
 static void gpio_init() {
     LOG("Using LED at GPIO%d.", LED_PIN);
     gpio_enable(LED_PIN, GPIO_OUTPUT);
@@ -88,14 +90,13 @@ static void gpio_init() {
 }
 
 //// Garage lamp ///////////////////////////////////////////////////////////
-bool _lamp_on = false;
-ETSTimer lamp_timer; // used for delayed switch off lamp
+ETSTimer lamp_off_timer; // used for delayed switch off lamp
 void lamp_state_set(bool on);
 
 // Getter
 homekit_value_t lamp_on_get() { 
-    LOG("Return lamp on: %s", boolToString(_lamp_on));
-    return HOMEKIT_BOOL(_lamp_on); 
+    LOG("Return lamp on: %s", boolToString(lamp_read()));
+    return HOMEKIT_BOOL(lamp_read()); 
 }
 // Setter
 void lamp_on_set(homekit_value_t value) {
@@ -105,7 +106,7 @@ void lamp_on_set(homekit_value_t value) {
         return;
     }
     LOG("Disarm LAMP timer");
-    sdk_os_timer_disarm(&lamp_timer);
+    sdk_os_timer_disarm(&lamp_off_timer);
     LOG("LAPM on set: %s", boolToString(value.bool_value));
     lamp_state_set(value.bool_value);
 }
@@ -121,29 +122,29 @@ static void lamp_identify(homekit_value_t _value) {
 void lamp_state_notify_homekit() {
     LOG("");
     homekit_value_t new_value = lamp_on_get();
-    LOG("!> Notifying homekit LAMP state: '%s': [%s]", boolToString(_lamp_on), lamp_on.description);
+    LOG("!> Notifying homekit LAMP state: '%s': [%s]", boolToString(lamp_read()), lamp_on.description);
     homekit_characteristic_notify(&lamp_on, new_value);
 }
 
 void lamp_state_set(bool on) {
-    LOG("LAMP new value: %s, old value: %s", boolToString(on), boolToString(_lamp_on));
-    if (_lamp_on != on) {
-        _lamp_on = on;
-        lamp_write(_lamp_on);
+    bool lamp_on = lamp_read();
+    LOG("LAMP new value: %s, old value: %s", boolToString(on), boolToString(lamp_on));
+    if (lamp_on != on) {
+        lamp_write(on);
         lamp_state_notify_homekit();
     }
 }
 
-static void lamp_timer_callback(void *arg) {
-    LOG("Lamp timer fired");
-    sdk_os_timer_disarm(&lamp_timer);
+static void lamp_timer_off_callback(void *arg) {
+    LOG("Lamp off timer fired");
+    sdk_os_timer_disarm(&lamp_off_timer);
     lamp_state_set(false);
 }
 
-static void init_lamp_timer() {
+static void init_lamp_off_timer() {
     LOG("Initialize delayed turn off lamp timer");
-    sdk_os_timer_disarm(&lamp_timer);
-    sdk_os_timer_setfn(&lamp_timer, lamp_timer_callback, NULL);
+    sdk_os_timer_disarm(&lamp_off_timer);
+    sdk_os_timer_setfn(&lamp_off_timer, lamp_timer_off_callback, NULL);
 }
 
 int _lamp_turned_on_from_interrupt;
@@ -152,10 +153,10 @@ void lamp_delayed_off_observer_task(void *pvParameters) {
     _lamp_turned_on_from_interrupt = 0;
     while (1) {
         vTaskDelay(500 / portTICK_PERIOD_MS);
-        if (_lamp_turned_on_from_interrupt != 0 && _lamp_on) {
+        if (_lamp_turned_on_from_interrupt != 0 && lamp_read()) {
             LOG("Arm Lamp timer");
             _lamp_turned_on_from_interrupt = 0;
-            sdk_os_timer_arm(&lamp_timer, LAMP_ON_DURATION * 1000, false);
+            sdk_os_timer_arm(&lamp_off_timer, LAMP_ON_DURATION * 1000, false);
         }
     }
 }
@@ -395,7 +396,7 @@ void user_init(void) {
 
     gpio_init();
 
-    init_lamp_timer();
+    init_lamp_off_timer();
     init_gdo_timer();
 
     LOG("Using REED Switch at GPIO%d.", REED_PIN);

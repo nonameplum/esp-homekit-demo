@@ -62,6 +62,16 @@ void gpio_interrupt_task(void *pvParameters) {
     }
 }
 
+/**
+ * @brief  The interrupt handler communicates the exact interrupt to the task via a queue.
+ * @note   
+ * @param  gpio_num: GPIO that will be configured for interrupt handling
+ * @param  pullup: Setup pull-up resistor
+ * @param  inverted: Invert read value from GPIO interrupt that will be passed in the callback. Handy in case when the GPIO is wired with LOW signal as ACTIVE
+ * @param  debounce_time: Time within another interrupts handling will be omitted based on the time of the intial interrupt
+ * @param  callback: Function that will be called when new value of GPIO will be detected
+ * @retval -1 indicates failure with interrupt handler setup
+ */
 int interrupt_gpio_create(
     const uint8_t gpio_num, 
     const bool pullup, 
