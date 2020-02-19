@@ -11,8 +11,10 @@ EXTRA_COMPONENTS = \
 	$(abspath ../../../UDPlogger) \
 	$(abspath ../../helpers) \
 
-ESPPORT=/dev/tty.SLAB_USBtoUART
-#ESPPORT=/dev/cu.usbserial-AH0707RK
+# ESPPORT=/dev/tty.SLAB_USBtoUART
+# ESPPORT=/dev/cu.usbserial-AH0707RK
+ESPPORT=/dev/cu.usbserial-1410
+
 ESPBAUD=115200
 
 FLASH_SIZE ?= 32
@@ -26,10 +28,12 @@ RELAY_PIN ?= 4 # Relay (short connect to open/close garage door)
 LAMP_PIN ?= 12 # Output outside lamp
 REED_PIN ?= 14 # Input Reed Switch
 
-BUILD_DATETIME ?= "Build time: $(shell date "+%d-%m-%y %H:%M:%S")"
-$(info $(BUILD_DATETIME))
+BUILD_DATETIME ?= "$(shell date "+%Y-%d-%m %H:%M:%S")"
+$(info "Build time: $(BUILD_DATETIME)")
 
 EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS 
+EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
+
 EXTRA_CFLAGS += -DREED_PIN=$(REED_PIN)
 EXTRA_CFLAGS += -DLAMP_PIN=$(LAMP_PIN)
 EXTRA_CFLAGS += -DRELAY_PIN=$(RELAY_PIN)
@@ -40,7 +44,6 @@ EXTRA_CFLAGS += -DLED_PIN=$(LED_PIN)
 EXTRA_CFLAGS += -DLWIP_NETIF_HOSTNAME=1
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_TO_UDP
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_ALSO_SERIAL
-# EXTRA_CFLAGS += -DconfigCHECK_FOR_STACK_OVERFLOW=1
 # EXTRA_CFLAGS += -DDEBUG_HELPER
 # EXTRA_CFLAGS += -DDEBUG_HELPER_UDP
 # EXTRA_CFLAGS += -DHOMEKIT_DEBUG

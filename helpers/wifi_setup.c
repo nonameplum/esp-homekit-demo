@@ -18,7 +18,7 @@
 
 #define WIFI_WAIT_MAX_SEC 120
 #define PING_MAX_FAIL 10
-#define PING_DURATION_SEC 15
+#define PING_DURATION_SEC 30
 
 #define SNTP_SERVERS 	"0.pool.ntp.org", "1.pool.ntp.org", \
 						"2.pool.ntp.org", "3.pool.ntp.org"   
@@ -80,7 +80,7 @@ static void wifi_task(void *_args) {
     vTaskDelete(NULL);
 }
 
-void wifi_init(char* ssid, char* password, const char* hostName, bool ota_update_on, wifi_connected_callback callback) {
+void wifi_init(const char* ssid, const char* password, const char* hostName, bool ota_update_on, wifi_connected_callback callback) {
     LOG("Start WiFi | SSID: %s | Password: %s", ssid, password);
     struct sdk_station_config wifi_config;
     strcpy((char*)(wifi_config.ssid), ssid);

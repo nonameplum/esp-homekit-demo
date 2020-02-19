@@ -5,6 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-void init_ota_update_failure_check(char *buildInfo, uint8_t maxFailureCount, int inTimeIntervalMs);
+void init_ota_update_failure_check(char *buildInfo);
 
 #endif /* spi_ota_build_failure_h */

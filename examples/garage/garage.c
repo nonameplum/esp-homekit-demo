@@ -147,25 +147,6 @@ static void init_lamp_off_timer() {
     sdk_os_timer_setfn(&lamp_off_timer, lamp_timer_off_callback, NULL);
 }
 
-int _lamp_turned_on_from_interrupt;
-
-void lamp_delayed_off_observer_task(void *pvParameters) {
-    _lamp_turned_on_from_interrupt = 0;
-    while (1) {
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        if (_lamp_turned_on_from_interrupt != 0 && lamp_read()) {
-            LOG("Arm Lamp timer");
-            _lamp_turned_on_from_interrupt = 0;
-            sdk_os_timer_arm(&lamp_off_timer, LAMP_ON_DURATION * 1000, false);
-        }
-    }
-}
-
-void lamp_delayed_off_observer() {
-    LOG("");
-    xTaskCreate(lamp_delayed_off_observer_task, "Lamp delayed off", 512, NULL, 1, NULL);
-}
-
 //// Garage door opener ///////////////////////////////////////////////////////////
 uint8_t _current_door_state = HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_UNKNOWN;
 ETSTimer gdo_update_timer; // used for delayed updating from contact sensor
@@ -280,13 +261,14 @@ void current_door_state_update_from_sensor() {
 void contact_sensor_state_changed(uint8_t gpio_num, bool gpio_state) {
     LOG("REED SWITCH Interrupt GPIO%d: %s", gpio_num, boolToString(gpio_state));
     
+    bool door_opened = contact_sensor_state_get(REED_PIN);
     // Turn on LED when door open
-    led_write(gpio_state);
+    led_write(door_opened);
+    lamp_state_set(door_opened);
+    if (door_opened) {
+        sdk_os_timer_arm(&lamp_off_timer, LAMP_ON_DURATION * 1000, false);
+    }
     
-    // Turn on light when door open
-    lamp_state_set(gpio_state);
-    _lamp_turned_on_from_interrupt += 1;
-
     if (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING ||
         _current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING) {
 	    // Ignore the event - the state will be updated after the time expired!
@@ -317,7 +299,7 @@ homekit_accessory_t *accessories[] = {
             HOMEKIT_SERVICE(
                 ACCESSORY_INFORMATION, 
                 .characteristics=(homekit_characteristic_t*[]) {
-                    HOMEKIT_CHARACTERISTIC(NAME, "Garage Door"),
+                    HOMEKIT_CHARACTERISTIC(NAME, "GarageDoor"),
                     HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"),
                     HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "237A2BAB119E"),
                     HOMEKIT_CHARACTERISTIC(MODEL, "PlumDoorOpener"),
@@ -330,7 +312,7 @@ homekit_accessory_t *accessories[] = {
                 GARAGE_DOOR_OPENER, 
                 .primary=true, 
                 .characteristics=(homekit_characteristic_t*[]) {
-                    HOMEKIT_CHARACTERISTIC(NAME, "Garage Door"),
+                    HOMEKIT_CHARACTERISTIC(NAME, "Door"),
                     &current_door_state,
                     &target_door_state,
                     HOMEKIT_CHARACTERISTIC(OBSTRUCTION_DETECTED, false),
@@ -345,7 +327,7 @@ homekit_accessory_t *accessories[] = {
         .category=homekit_accessory_category_lightbulb, 
         .services=(homekit_service_t*[]) {
             HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics=(homekit_characteristic_t*[]) {
-                HOMEKIT_CHARACTERISTIC(NAME, "Garage Lamp"),
+                HOMEKIT_CHARACTERISTIC(NAME, "GarageOutsideLight"),
                 HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"),
                 HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "037A2BABF19D"),
                 HOMEKIT_CHARACTERISTIC(MODEL, "PlumLamp"),
@@ -357,7 +339,7 @@ homekit_accessory_t *accessories[] = {
                 LIGHTBULB, 
                 .primary=true, 
                 .characteristics=(homekit_characteristic_t*[]) {
-                    HOMEKIT_CHARACTERISTIC(NAME, "Garage Lamp"),
+                    HOMEKIT_CHARACTERISTIC(NAME, "Light"),
                     &lamp_on,
                     NULL
                 }
@@ -386,13 +368,13 @@ void user_init(void) {
     #ifdef DEBUG_HELPER_UDP
     udplog_init(3);
     #endif /* DEBUG_HELPER_UDP */
+
+    init_ota_update_failure_check(BUILD_DATETIME);
     
     uart_set_baud(0, 115200);
     
     LOG("START");
     logVersion();
-
-    // init_ota_update_failure_check(BUILD_DATETIME, 10, 60 * 1000);
 
     gpio_init();
 
@@ -404,7 +386,7 @@ void user_init(void) {
         LOG("Failed to initialize door");
     }
 
-    lamp_delayed_off_observer();
+    homekit_server_reset();
     
-    wifi_init(WIFI_SSID, WIFI_PASSWORD, "esp8266xg1", true, wifi_connected_handler);
+    wifi_init(WIFI_SSID, WIFI_PASSWORD, "iot_garage_door", true, wifi_connected_handler);
 }
