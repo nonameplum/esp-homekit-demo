@@ -9,6 +9,8 @@
 #include "debug_helper.h"
 #include <time.h>
 
+bool debug_helper_log_enabled = true;
+
 char* getFormattedTime(void) {
     time_t ts = time(NULL);
     struct tm tm = *localtime(&ts);

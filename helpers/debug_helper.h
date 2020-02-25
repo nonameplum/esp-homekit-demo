@@ -13,6 +13,8 @@ char* getFormattedTime(void);
 char* boolToString(bool value);
 void silent_unused_args(const char *__restrict, ...);
 
+extern bool debug_helper_log_enabled;
+
 #ifdef DEBUG_HELPER
 
     #ifdef DEBUG_HELPER_UDP
@@ -34,9 +36,11 @@ void silent_unused_args(const char *__restrict, ...);
 
     #define LOG(format, ...) \
     do { \
+        if (debug_helper_log_enabled) { \
         char *time = getFormattedTime(); \
         _LOG_("+++ %s [%s] [%s:%d] " format "\n", time, __func__, __FILENAME__, __LINE__, ##__VA_ARGS__); \
         free(time); \
+        } \
     } while(0)
 
 #else

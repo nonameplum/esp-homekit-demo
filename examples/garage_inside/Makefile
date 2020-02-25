@@ -1,4 +1,4 @@
-PROGRAM = garage_light
+PROGRAM = garage_inside
 
 EXTRA_COMPONENTS = \
 	extras/http-parser \
@@ -12,9 +12,9 @@ EXTRA_COMPONENTS = \
 	$(abspath ../../../UDPlogger) \
 	$(abspath ../../helpers) \
 
-ESPPORT=/dev/tty.SLAB_USBtoUART
+# ESPPORT=/dev/tty.SLAB_USBtoUART
 # ESPPORT=/dev/cu.usbserial-AH0707RK
-# ESPPORT=/dev/cu.usbserial-1410
+ESPPORT=/dev/tty.usbserial-1420
 
 ESPBAUD=115200
 
@@ -22,10 +22,10 @@ FLASH_SIZE ?= 32
 FLASH_MODE ?= dio
 FLASH_SPEED ?= 40
 
-INPUT_PIN ?= 5
-RELAY_PIN ?= 4
-LED_PIN ?= 2
-SWITCH_PIN ?= 0
+INPUT_PIN ?= 5  # D1
+RELAY_PIN ?= 4  # D2
+LED_PIN ?= 2    # D4
+SWITCH_PIN ?= 0 # D3
 
 BUILD_DATETIME ?= "$(shell date "+%Y-%d-%m %H:%M:%S")"
 $(info "Build time: $(BUILD_DATETIME)")
@@ -41,7 +41,7 @@ EXTRA_CFLAGS += -DSWITCH_PIN=$(SWITCH_PIN)
 EXTRA_CFLAGS += -DLWIP_NETIF_HOSTNAME=1
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_TO_UDP
 # EXTRA_CFLAGS += -DUDPLOG_PRINTF_ALSO_SERIAL
-# EXTRA_CFLAGS += -DDEBUG_HELPER
+EXTRA_CFLAGS += -DDEBUG_HELPER
 # EXTRA_CFLAGS += -DDEBUG_HELPER_UDP
 # EXTRA_CFLAGS += -DHOMEKIT_DEBUG
 # EXTRA_CFLAGS += -DHOMEKIT_LOG_DISABLE
