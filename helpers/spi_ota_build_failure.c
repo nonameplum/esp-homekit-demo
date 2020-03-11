@@ -125,11 +125,11 @@ static void exception_handler() {
 
 static void log_ota_config() {
     rboot_config conf = rboot_get_config();
-    LOG("\r\n\r\nOTA Basic demo.\r\nCurrently running on flash slot %d / %d.\r\n\r\n",
-           conf.current_rom, conf.count);
+    LOG("\r\n\r\nCurrently running on flash slot %d / %d.\r\n\r\n", 
+        conf.current_rom, conf.count);
 
     LOG("Image addresses in flash:\r\n");
-    for(int i = 0; i <conf.count; i++) {
+    for(int i = 0; i<conf.count; i++) {
         LOG("%c%d: offset 0x%08x\r\n", i == conf.current_rom ? '*':' ', i, conf.roms[i]);
     }
 }

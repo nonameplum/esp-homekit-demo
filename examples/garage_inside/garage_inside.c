@@ -1,6 +1,5 @@
 #include <FreeRTOS.h>
 #include <assert.h>
-#include <debug_helper.h>
 #include <esp/uart.h>
 #include <esp8266.h>
 #include <esplibs/libmain.h>
@@ -15,6 +14,7 @@
 #include <homekit/characteristics.h>
 #include <homekit/homekit.h>
 
+#include <debug_helper.h>
 #include <interrupt_gpio.h>
 #include <spi_ota_build_failure.h>
 #include <udp_command.h>
@@ -282,22 +282,67 @@ homekit_characteristic_t light_sensor_characteristic =
     HOMEKIT_CHARACTERISTIC_(CONTACT_SENSOR_STATE, 0, .getter = light_sensor_on_get, .setter = NULL, NULL);
 
 // Accessories
+// clang-format off
 homekit_accessory_t *accessories[] = {
     HOMEKIT_ACCESSORY(
-            .id = 1,
-            .category = homekit_accessory_category_lightbulb,
-            .services = (homekit_service_t *[]){
-                HOMEKIT_SERVICE(
-                    ACCESSORY_INFORMATION,
-                    .characteristics = (homekit_characteristic_t *[]){
-                        HOMEKIT_CHARACTERISTIC(NAME, "GarageInside"),
-                        HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"),
-                        HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "022A2BABF19X"),
-                        HOMEKIT_CHARACTERISTIC(MODEL, "PLG01"),
-                        HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "1.0"),
-                        HOMEKIT_CHARACTERISTIC(IDENTIFY, light_identify), NULL}),
-                HOMEKIT_SERVICE(LIGHTBULB, .primary = true, .characteristics = (homekit_characteristic_t *[]){HOMEKIT_CHARACTERISTIC(NAME, "Light"), &light_characteristic, NULL}, ), NULL}),
-    HOMEKIT_ACCESSORY(.id = 2, .category = homekit_accessory_category_sensor, .services = (homekit_service_t *[]){HOMEKIT_SERVICE(ACCESSORY_INFORMATION, .characteristics = (homekit_characteristic_t *[]){HOMEKIT_CHARACTERISTIC(NAME, "GarageInsideLightSensor"), HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"), HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "2012345"), HOMEKIT_CHARACTERISTIC(MODEL, "PLS01"), HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "0.1"), HOMEKIT_CHARACTERISTIC(IDENTIFY, light_sensor_identify), NULL}, ), HOMEKIT_SERVICE(CONTACT_SENSOR, .primary = true, .characteristics = (homekit_characteristic_t *[]){HOMEKIT_CHARACTERISTIC(NAME, "Sensor"), &light_sensor_characteristic, NULL}, ), NULL}, ), NULL};
+        .id = 1,
+        .category = homekit_accessory_category_lightbulb,
+        .services = (homekit_service_t *[]){
+            HOMEKIT_SERVICE(
+                ACCESSORY_INFORMATION,
+                .characteristics = (homekit_characteristic_t *[]){
+                    HOMEKIT_CHARACTERISTIC(NAME, "GarageInside"),
+                    HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"),
+                    HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "022A2BABF19X"),
+                    HOMEKIT_CHARACTERISTIC(MODEL, "PLG01"),
+                    HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "1.0"),
+                    HOMEKIT_CHARACTERISTIC(IDENTIFY, light_identify), 
+                    NULL 
+                }
+            ),
+            HOMEKIT_SERVICE(
+                LIGHTBULB, 
+                .primary = true, 
+                .characteristics = (homekit_characteristic_t *[]){
+                    HOMEKIT_CHARACTERISTIC(NAME, "Light"), 
+                    &light_characteristic, 
+                    NULL 
+                }, 
+            ), 
+            NULL 
+        }
+    ),
+    HOMEKIT_ACCESSORY(
+        .id = 2, 
+        .category = homekit_accessory_category_sensor, 
+        .services = (homekit_service_t *[]){ 
+            HOMEKIT_SERVICE(
+                ACCESSORY_INFORMATION, 
+                .characteristics = (homekit_characteristic_t *[]){ 
+                    HOMEKIT_CHARACTERISTIC(NAME, "GarageInsideLightSensor"), 
+                    HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"), 
+                    HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "2012345"),
+                    HOMEKIT_CHARACTERISTIC(MODEL, "PLS01"),
+                    HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "0.1"), 
+                    HOMEKIT_CHARACTERISTIC(IDENTIFY, light_sensor_identify), 
+                    NULL 
+                }, 
+            ), 
+            HOMEKIT_SERVICE(
+                CONTACT_SENSOR, 
+                .primary = true, 
+                .characteristics = (homekit_characteristic_t *[]){ 
+                    HOMEKIT_CHARACTERISTIC(NAME, "Sensor"), 
+                    &light_sensor_characteristic, 
+                    NULL 
+                }, 
+            ), 
+            NULL 
+        }, 
+    ), 
+    NULL
+};
+// clang-format on
 
 homekit_server_config_t config = {.accessories = accessories, .password = "111-11-987"};
 
@@ -306,18 +351,18 @@ homekit_server_config_t config = {.accessories = accessories, .password = "111-1
 static void wifi_connected_handler() {
     LOG("Homekit server init");
     homekit_server_init(&config);
-    udp_command_server_task_start_with_default_commands(9876);
+    udp_command_server_task_start_with_default_commands(9820);
 }
 
 void user_init(void) {
-#ifdef DUDPLOG_PRINTF_TO_UDP
-    udplog_init(3);
-#endif /* DUDPLOG_PRINTF_TO_UDP */
-
     uart_set_baud(0, 115200);
+#ifdef DEBUG_HELPER_UDP
+    udplog_init(3);
+#endif /* DEBUG_HELPER_UDP */
+
     init_ota_update_failure_check(BUILD_DATETIME);
 
-    LOG("START");
+    LOG("Garage Inside | %s", BUILD_DATETIME);
 
     gpio_init();
     led_write(false);

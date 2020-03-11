@@ -12,15 +12,15 @@
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
 #include <udplogger.h>
-#include "rboot-api.h"
+
+#include <debug_helper.h>
+#include <button_sensor.h>
+#include <interrupt_gpio.h>
+#include <spi_ota_build_failure.h>
+#include <udp_command.h>
+#include <wifi_setup.h>
 
 #include "wifi.h"
-#include <debug_helper.h>
-#include <interrupt_gpio.h>
-#include <button_sensor.h>
-#include <ping_helper.h>
-#include <wifi_setup.h>   
-#include <spi_ota_build_failure.h>
 
 // Possible values for characteristic CURRENT_DOOR_STATE:
 #define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN 0
@@ -48,19 +48,25 @@ bool contact_sensor_state_get(uint8_t gpio_num) {
 
 const char *state_description(uint8_t state) {
     switch (state) {
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN: return "open";
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING: return "opening";
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED: return "closed";
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING: return "closing";
-        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_STOPPED: return "stopped";
-        default: return "unknown";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN:
+            return "open";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING:
+            return "opening";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED:
+            return "closed";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING:
+            return "closing";
+        case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_STOPPED:
+            return "stopped";
+        default:
+            return "unknown";
     }
 }
 
 //// GPIO setup
 static void led_write(bool on) {
     LOG("Led write: %s. (org: %s)", boolToString(!on), boolToString(on));
-    gpio_write(LED_PIN, !on); // ESP8266MOD has LED configured active LOW
+    gpio_write(LED_PIN, !on);  // ESP8266MOD has LED configured active LOW
 }
 
 static void relay_write(bool on) {
@@ -90,13 +96,13 @@ static void gpio_init() {
 }
 
 //// Garage lamp ///////////////////////////////////////////////////////////
-ETSTimer lamp_off_timer; // used for delayed switch off lamp
+ETSTimer lamp_off_timer;  // used for delayed switch off lamp
 void lamp_state_set(bool on);
 
 // Getter
-homekit_value_t lamp_on_get() { 
+homekit_value_t lamp_on_get() {
     LOG("Return lamp on: %s", boolToString(lamp_read()));
-    return HOMEKIT_BOOL(lamp_read()); 
+    return HOMEKIT_BOOL(lamp_read());
 }
 // Setter
 void lamp_on_set(homekit_value_t value) {
@@ -112,8 +118,7 @@ void lamp_on_set(homekit_value_t value) {
 }
 // Characteristic
 homekit_characteristic_t lamp_on = HOMEKIT_CHARACTERISTIC_(
-    ON, false, .getter=lamp_on_get, .setter=lamp_on_set
-);
+    ON, false, .getter = lamp_on_get, .setter = lamp_on_set);
 // Identify
 static void lamp_identify(homekit_value_t _value) {
     LOG("Lamp identify");
@@ -149,7 +154,7 @@ static void init_lamp_off_timer() {
 
 //// Garage door opener ///////////////////////////////////////////////////////////
 uint8_t _current_door_state = HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_UNKNOWN;
-ETSTimer gdo_update_timer; // used for delayed updating from contact sensor
+ETSTimer gdo_update_timer;  // used for delayed updating from contact sensor
 void current_door_state_update_from_sensor();
 void current_door_state_set(uint8_t new_state);
 
@@ -157,7 +162,7 @@ void current_door_state_set(uint8_t new_state);
 // Getter
 homekit_value_t gdo_current_door_state_get() {
     if (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_UNKNOWN) {
-	    current_door_state_update_from_sensor();
+        current_door_state_update_from_sensor();
     }
     LOG("Returning Current door state '%s'.", state_description(_current_door_state));
     return HOMEKIT_UINT8(_current_door_state);
@@ -165,17 +170,16 @@ homekit_value_t gdo_current_door_state_get() {
 // Characteristic
 homekit_characteristic_t current_door_state = HOMEKIT_CHARACTERISTIC_(
     CURRENT_DOOR_STATE, HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED,
-    .getter=gdo_current_door_state_get,
-    .setter=NULL
-);
+    .getter = gdo_current_door_state_get,
+    .setter = NULL);
 // Target door state //
 // Getter
 homekit_value_t gdo_target_door_state_get() {
     uint8_t result = gdo_current_door_state_get().int_value;
     if (result == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING) {
-	    result = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_OPEN;
+        result = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_OPEN;
     } else if (result == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING) {
-        result = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED;  
+        result = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED;
     }
     LOG("Returning Target door state '%s'.", state_description(result));
     return HOMEKIT_UINT8(result);
@@ -190,7 +194,7 @@ void gdo_target_door_state_set(homekit_value_t new_value) {
     if (_current_door_state != HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN &&
         _current_door_state != HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED) {
         LOG("gdo_target_door_state_set() ignored: current state not open or closed (%s).", state_description(_current_door_state));
-	    return;
+        return;
     }
     if (_current_door_state == new_value.int_value) {
         LOG("gdo_target_door_state_set() ignored: new target state == current state (%s).", state_description(_current_door_state));
@@ -203,9 +207,8 @@ void gdo_target_door_state_set(homekit_value_t new_value) {
 
     current_door_state_set(
         (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED)
-        ? HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING
-        : HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING
-    );
+            ? HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING
+            : HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING);
     // Wait for the garage door to open / close,
     // then update current_door_state from sensor:
     LOG("Arm GDO timer");
@@ -214,9 +217,8 @@ void gdo_target_door_state_set(homekit_value_t new_value) {
 // Characteristic
 homekit_characteristic_t target_door_state = HOMEKIT_CHARACTERISTIC_(
     TARGET_DOOR_STATE, HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED,
-    .getter=gdo_target_door_state_get,
-    .setter=gdo_target_door_state_set
-);
+    .getter = gdo_target_door_state_get,
+    .setter = gdo_target_door_state_set);
 // Identify
 static void identify_gdo(homekit_value_t _value) {
     LOG("GDO identify");
@@ -260,7 +262,7 @@ void current_door_state_update_from_sensor() {
  **/
 void contact_sensor_state_changed(uint8_t gpio_num, bool gpio_state) {
     LOG("REED SWITCH Interrupt GPIO%d: %s", gpio_num, boolToString(gpio_state));
-    
+
     bool door_opened = contact_sensor_state_get(REED_PIN);
     // Turn on LED when door open
     led_write(door_opened);
@@ -268,12 +270,12 @@ void contact_sensor_state_changed(uint8_t gpio_num, bool gpio_state) {
     if (door_opened) {
         sdk_os_timer_arm(&lamp_off_timer, LAMP_ON_DURATION * 1000, false);
     }
-    
+
     if (_current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING ||
         _current_door_state == HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING) {
-	    // Ignore the event - the state will be updated after the time expired!
+        // Ignore the event - the state will be updated after the time expired!
         LOG("ignored during opening or closing.");
-	    return;
+        return;
     }
     current_door_state_update_from_sensor();
 }
@@ -291,6 +293,7 @@ static void init_gdo_timer() {
 }
 
 //// Accessory definition
+// clang-format off
 homekit_accessory_t *accessories[] = {
     HOMEKIT_ACCESSORY(
         .id=1, 
@@ -302,7 +305,7 @@ homekit_accessory_t *accessories[] = {
                     HOMEKIT_CHARACTERISTIC(NAME, "GarageDoor"),
                     HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"),
                     HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "237A2BAB119E"),
-                    HOMEKIT_CHARACTERISTIC(MODEL, "PlumDoorOpener"),
+                    HOMEKIT_CHARACTERISTIC(MODEL, "PLDO01"),
                     HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "1.0"),
                     HOMEKIT_CHARACTERISTIC(IDENTIFY, identify_gdo),
                     NULL
@@ -330,7 +333,7 @@ homekit_accessory_t *accessories[] = {
                 HOMEKIT_CHARACTERISTIC(NAME, "GarageOutsideLight"),
                 HOMEKIT_CHARACTERISTIC(MANUFACTURER, "Plum"),
                 HOMEKIT_CHARACTERISTIC(SERIAL_NUMBER, "037A2BABF19D"),
-                HOMEKIT_CHARACTERISTIC(MODEL, "PlumLamp"),
+                HOMEKIT_CHARACTERISTIC(MODEL, "PLL01"),
                 HOMEKIT_CHARACTERISTIC(FIRMWARE_REVISION, "1.0"),
                 HOMEKIT_CHARACTERISTIC(IDENTIFY, lamp_identify),
                 NULL
@@ -349,44 +352,36 @@ homekit_accessory_t *accessories[] = {
     ),
     NULL
 };
+// clang-format on
 
 static homekit_server_config_t config = {
     .accessories = accessories,
-    .password = "111-11-987"
+    .password = "111-11-987",
 };
 
 //// Main ////////////////////////////////////////////////
-void logVersion() {
-    LOG("Garage Door - init - v1 | %s", BUILD_DATETIME);
-}
-
 void wifi_connected_handler() {
+    LOG("Homekit server init");
     homekit_server_init(&config);
+    udp_command_server_task_start_with_default_commands(9810);
 }
 
 void user_init(void) {
-    #ifdef DEBUG_HELPER_UDP
+    uart_set_baud(0, 115200);
+#ifdef DEBUG_HELPER_UDP
     udplog_init(3);
-    #endif /* DEBUG_HELPER_UDP */
+#endif /* DEBUG_HELPER_UDP */
 
     init_ota_update_failure_check(BUILD_DATETIME);
-    
-    uart_set_baud(0, 115200);
-    
-    LOG("START");
-    logVersion();
+
+    LOG("Garage Door | %s", BUILD_DATETIME);
 
     gpio_init();
-
     init_lamp_off_timer();
     init_gdo_timer();
 
-    LOG("Using REED Switch at GPIO%d.", REED_PIN);
-    if (interrupt_gpio_create(REED_PIN, false, false, 500, contact_sensor_state_changed)) {
-        LOG("Failed to initialize door");
-    }
+    LOG("Create input interrupt on REED_PIN [GPIO%d]", REED_PIN);
+    interrupt_gpio_create(REED_PIN, false, false, 500, contact_sensor_state_changed);
 
-    homekit_server_reset();
-    
     wifi_init(WIFI_SSID, WIFI_PASSWORD, "iot_garage_door", true, wifi_connected_handler);
 }

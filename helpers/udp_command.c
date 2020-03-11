@@ -6,6 +6,8 @@
 #include <esp8266.h>
 #include <FreeRTOS.h>
 #include <task.h>
+#include "rboot-api.h"
+
 #include <debug_helper.h>
 #include <homekit/homekit.h>
 
@@ -46,6 +48,13 @@ void udp_command_log_enable(char *result, int result_size, char *param) {
     } else {
         strlcpy(result, "Wrong param: (null)", result_size);
     }
+}
+
+void udp_command_ota_info(char *result, int result_size, char *param) {
+    char ota_info[14];
+    rboot_config conf = rboot_get_config();
+    sprintf(ota_info, "Flash slot: %d/%d", conf.current_rom, conf.count);
+    strlcpy(result, ota_info, result_size);
 }
 
 // Private udp command access helpers
@@ -198,6 +207,7 @@ void udp_command_server_task_start(int udp_port) {
  *            * homekit_reset (reset the homekit storage and restart the device)
  *            * gpio_read (read gpio value for given gpio number ex. 'gpio_read:5')
  *            * log_enable (enable/disable LOG() from debug_helper.h)
+ *            * ota_info (currently used slot of ota update)
  * @param  udp_port: Port number that the UDP server will listen to
  * @retval None
  */
@@ -207,4 +217,5 @@ void udp_command_server_task_start_with_default_commands(int udp_port) {
     udp_command_add("homekit_reset", udp_command_homekit_reset);
     udp_command_add("gpio_read", udp_command_gpio_read);
     udp_command_add("log_enable", udp_command_log_enable);
+    udp_command_add("ota_info", udp_command_ota_info);
 }

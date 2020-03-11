@@ -18,6 +18,7 @@
 #include <interrupt_gpio.h>
 #include <spi_ota_build_failure.h>
 #include <wifi_setup.h>
+#include <udp_command.h>
 
 #include "ds18b20/ds18b20.h"
 
@@ -96,16 +97,25 @@ static void temperature_task_init() {
     xTaskCreate(&temperature_task, "temperature_task", 512, NULL, 1, NULL);
 }
 
+// UDP commands
+void udp_command_read_temp(char *result, int result_size, char *param) {
+    snprintf(result, result_size, "%.2f \xC2\xB0""C", temperature.value.float_value);
+}
+
 // Main
 static void wifi_connected_handler() {
     LOG("Homekit server init");
     homekit_server_init(&config);
+    udp_command_server_task_start_with_default_commands(9876);
+    udp_command_add("read_temp", udp_command_read_temp);
 }
 
 void user_init(void) {
-    #ifdef DUDPLOG_PRINTF_TO_UDP
+    #ifdef DEBUG_HELPER_UDP
     udplog_init(3);
-    #endif /* DUDPLOG_PRINTF_TO_UDP */
+    #endif /* DEBUG_HELPER_UDP */
+    
+    uart_set_baud(0, 115200);
 
     init_ota_update_failure_check(BUILD_DATETIME);
 
