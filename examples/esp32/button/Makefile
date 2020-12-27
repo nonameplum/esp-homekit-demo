@@ -1,4 +1,4 @@
-PROJECT_NAME = dynamic_services
+PROJECT_NAME = button
 
 CFLAGS += -I$(abspath ../../..) -DHOMEKIT_SHORT_APPLE_UUIDS
 
