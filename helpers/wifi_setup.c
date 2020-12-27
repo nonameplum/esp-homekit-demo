@@ -52,13 +52,13 @@ static void on_ping_watchdog_fail_callback() {
 
 static void on_wifi_ready() {
     LOG("");
-    start_sntp();
+    //start_sntp();
     LOG("Starting TFTP server...");
     if (ota_update) {
         ota_tftp_init_server(TFTP_PORT);
     }
-    ip_addr_t to_ping = get_gw_ip();
-    start_ping_watchdog(to_ping, PING_DURATION_SEC, PING_MAX_FAIL, on_ping_watchdog_fail_callback);
+    //ip_addr_t to_ping = get_gw_ip();
+    //start_ping_watchdog(to_ping, PING_DURATION_SEC, PING_MAX_FAIL, on_ping_watchdog_fail_callback);
     if (wifi_connected != NULL) {
         wifi_connected();
     }
@@ -94,5 +94,5 @@ void wifi_init(const char* ssid, const char* password, const char* hostName, boo
     sdk_wifi_station_set_config(&wifi_config);
     sdk_wifi_station_connect();
     
-    xTaskCreate(wifi_task, "WiFi task", 1024, NULL, 1, NULL);
+    xTaskCreate(wifi_task, "WiFi task", 512, NULL, 1, NULL);
 }

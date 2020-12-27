@@ -15,6 +15,7 @@
 
 udp_command_t *udp_commands = NULL;
 int udp_command_port = 123456;
+int server_started = false;
 
 // Default commands
 
@@ -197,8 +198,12 @@ int udp_command_add(char *command_name, udp_command_callback_fn callback) {
  * @retval None
  */
 void udp_command_server_task_start(int udp_port) {
+    if (server_started) {
+        return;
+    }
     udp_command_port = udp_port;
-    xTaskCreate(udp_command_server_task, "udp_command_server_task", 1024, NULL, 2, NULL);
+    server_started = true;
+    xTaskCreate(udp_command_server_task, "udp_command_server_task", 768, NULL, 2, NULL);
 }
 /**
  * @brief  Same as udp_command_server_task_start_with_default_commands but it adds predefined commands
