@@ -1,17 +1,19 @@
-PROGRAM = button
+PROGRAM = occupancy
 
 EXTRA_COMPONENTS = \
 	extras/http-parser \
-	$(abspath ../../components/common/button) \
+	extras/dhcpserver \
 	$(abspath ../../components/esp8266-open-rtos/cJSON) \
+	$(abspath ../../components/esp8266-open-rtos/wifi_config) \
+	$(abspath ../../components/common/button) \
 	$(abspath ../../components/common/wolfssl) \
 	$(abspath ../../components/common/homekit)
 
-BUTTON_PIN ?= 4
+SENSOR_PIN ?= 4
 
 FLASH_SIZE ?= 32
 
-EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS -DBUTTON_PIN=$(BUTTON_PIN)
+EXTRA_CFLAGS += -I../.. -DHOMEKIT_SHORT_APPLE_UUIDS -DSENSOR_PIN=$(SENSOR_PIN)
 
 include $(SDK_PATH)/common.mk
 
