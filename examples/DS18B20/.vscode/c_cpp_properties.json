@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/Volumes/esp8266/esp-open-rtos/**",
+                "/Volumes/esp8266/UDPlogger/**",
+                "/Volumes/esp8266/esp-homekit-demo/components/**",
+                "/Volumes/esp8266/esp-homekit-demo/helpers/**"
+            ],
+            "defines": [
+                "_GNU_SOURCE"
+            ],
+            "macFrameworkPath": [
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c99",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
