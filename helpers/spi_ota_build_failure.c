@@ -62,15 +62,7 @@ static void store_ota_update_failure_build(char *buildInfo) {
     LOG("Found next empty block no: %d", next_block_idx);
     if (next_block_idx == -1) {
         LOG("Failed to write failure info. Max number of crashes %d", OTA_INFO_MAX_CRASH);
-        LOG("Switch to previous ROM & restart the device");
-        spiflash_erase_sector(SPIFLASH_OTA_INFO_BASE_ADDR);
-        rboot_config conf = rboot_get_config();
-        int slot = (conf.current_rom + 1) % conf.count;
-        if (slot == conf.current_rom) {
-            LOG("Only one OTA slot!");
-        }
-        rboot_set_current_rom(slot);
-        sdk_system_restart();
+        ota_update_switch_rom();
         return;
     }
 
@@ -136,8 +128,23 @@ static void log_ota_config() {
 
 // Public methods
 void init_ota_update_failure_check(char *buildInfo) {
+#ifdef OTA_UPDATE_FAILURE_CHECK
     LOG("buildInfo: %s", buildInfo);    
     set_user_exception_handler(exception_handler);
     log_ota_config();
     appBuildInfo = strdup(buildInfo);
+#endif
+}
+
+void ota_update_switch_rom() {
+    LOG("Set previous ROM & restart the device");
+    spiflash_erase_sector(SPIFLASH_OTA_INFO_BASE_ADDR);
+    rboot_config conf = rboot_get_config();
+    int slot = (conf.current_rom + 1) % conf.count;
+    if (slot == conf.current_rom) {
+        LOG("Only one OTA slot!");
+    }
+    rboot_set_current_rom(slot);
+    sdk_system_restart();
+    return;    
 }

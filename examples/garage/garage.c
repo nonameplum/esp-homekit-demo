@@ -383,5 +383,5 @@ void user_init(void) {
     LOG("Create input interrupt on REED_PIN [GPIO%d]", REED_PIN);
     interrupt_gpio_create(REED_PIN, false, false, 500, contact_sensor_state_changed);
 
-    wifi_init(WIFI_SSID, WIFI_PASSWORD, "iot_garage_door", true, wifi_connected_handler);
+    wifi_init(WIFI_SSID, WIFI_PASSWORD, "iot_garage_door", wifi_connected_handler);
 }

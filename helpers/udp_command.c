@@ -10,6 +10,7 @@
 
 #include <debug_helper.h>
 #include <homekit/homekit.h>
+#include <spi_ota_build_failure.h>
 
 #define BUFLEN 512
 
@@ -56,6 +57,10 @@ void udp_command_ota_info(char *result, int result_size, char *param) {
     rboot_config conf = rboot_get_config();
     sprintf(ota_info, "Flash slot: %d/%d", conf.current_rom, conf.count);
     strlcpy(result, ota_info, result_size);
+}
+
+void udp_command_ota_switch(char *result, int result_size, char *param) {
+    ota_update_switch_rom();
 }
 
 // Private udp command access helpers
@@ -217,10 +222,13 @@ void udp_command_server_task_start(int udp_port) {
  * @retval None
  */
 void udp_command_server_task_start_with_default_commands(int udp_port) {
+#ifdef UDP_COMMAND_SERVER
     udp_command_server_task_start(udp_port);
     udp_command_add("restart", udp_command_system_restart);
     udp_command_add("homekit_reset", udp_command_homekit_reset);
     udp_command_add("gpio_read", udp_command_gpio_read);
     udp_command_add("log_enable", udp_command_log_enable);
     udp_command_add("ota_info", udp_command_ota_info);
+    udp_command_add("ota_switch", udp_command_ota_switch);
+#endif
 }

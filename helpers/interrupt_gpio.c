@@ -104,7 +104,7 @@ int interrupt_gpio_create(
     
     char task_name [16];
     sprintf(task_name, "gpiotask%d", gpio_num);
-    xTaskCreate(gpio_interrupt_task, task_name, 256, (void *)gpio, 2, &gpio->task_handle);
+    xTaskCreate(gpio_interrupt_task, task_name, 196, (void *)gpio, 2, &gpio->task_handle);
 
     return 0;
 }

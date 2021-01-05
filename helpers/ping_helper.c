@@ -38,12 +38,12 @@
 
 /** ping identifier - must fit on a u16_t */
 #ifndef PING_ID
-#define PING_ID        0xAFAF
+#define PING_ID        0xFAA0
 #endif
 
 /** ping additional data size to include in the packet */
 #ifndef PING_DATA_SIZE
-#define PING_DATA_SIZE 32
+#define PING_DATA_SIZE 2
 #endif
 
 /** ping watchdog start delay - in seconds */
@@ -309,5 +309,5 @@ void start_ping_watchdog(ip_addr_t ping_addr, int duration_sec, int max_failure_
     watchdog_context->max_failure_count = max_failure_count;
     watchdog_context->on_fail = on_fail_callback;
     
-    xTaskCreate(wifi_watchdog_task, "wifi_watchdog_task", 1024, NULL, 2, NULL);
+    xTaskCreate(wifi_watchdog_task, "wifi_watchdog_task", 320, NULL, 0, NULL);
 }
