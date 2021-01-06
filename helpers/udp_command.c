@@ -223,6 +223,7 @@ void udp_command_server_task_start(int udp_port) {
  */
 void udp_command_server_task_start_with_default_commands(int udp_port) {
 #ifdef UDP_COMMAND_SERVER
+    LOG("Start UDP command server");
     udp_command_server_task_start(udp_port);
     udp_command_add("restart", udp_command_system_restart);
     udp_command_add("homekit_reset", udp_command_homekit_reset);
